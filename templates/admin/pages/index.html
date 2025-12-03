@@ -90,7 +90,7 @@
                     {% if doc.created_at %}
                         {{ doc.created_at.strftime('%Y-%m-%d') }}
                     {% else %}
-                        <span class="text-muted">-</span>
+                        -
                     {% endif %}
                 </td>
                 <td>
@@ -106,9 +106,16 @@
                     <a href="/{{ doc.file_path }}" target="_blank" class="btn btn-sm btn-outline-primary">
                         <i class="fa fa-download"></i>
                     </a>
-                    <form action="{{ url_for('admin.pages.delete', id=doc.id) }}" method="post" onsubmit="return confirm('Delete?');" class="d-inline ms-1">
-                        <button type="submit" class="btn btn-sm btn-danger"><i class="fa fa-trash-o"></i></button>
-                    </form>
+                    <button type="button" class="btn btn-sm btn-danger ms-1"
+                            onclick="openConfirmation(
+                                '{{ url_for('admin.pages.delete', id=doc.id) }}',
+                                '{{ gettext('admin.pages.delete_title') }}',
+                                '{{ gettext('admin.pages.delete_confirm', title=doc.title) }}',
+                                'btn-danger',
+                                '{{ gettext('admin.btn.delete') }}'
+                            )">
+                        <i class="fa fa-trash-o"></i>
+                    </button>
                 </td>
             </tr>
             {% else %}

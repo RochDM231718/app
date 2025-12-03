@@ -9,16 +9,24 @@ from app.models.enums import UserStatus, AchievementStatus
 
 class GlobalContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # 1. Пытаемся получить локаль из сессии
         try:
             locale = request.session.get('locale', 'en')
         except AssertionError:
+            # Если SessionMiddleware еще не отработал (ошибка конфигурации)
+            print("DEBUG: SessionMiddleware not accessible yet, defaulting to 'en'")
             locale = 'en'
+
+        # 2. Устанавливаем контекстную переменную
         token = current_locale.set(locale)
+
+        # print(f"DEBUG: Middleware set locale to: {locale} for path: {request.url.path}")
 
         db_conn = get_database_connection()
         db = db_conn.get_session()
 
         try:
+            # Получаем счетчики для меню
             pending_users = db.query(Users).filter(Users.status == UserStatus.PENDING).count()
             pending_achievements = db.query(Achievement).filter(Achievement.status == AchievementStatus.PENDING).count()
 
@@ -31,6 +39,7 @@ class GlobalContextMiddleware(BaseHTTPMiddleware):
 
         finally:
             db.close()
+            # 3. Сбрасываем контекст
             current_locale.reset(token)
 
 

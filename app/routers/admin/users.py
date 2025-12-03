@@ -56,15 +56,14 @@ async def index(
         role: Optional[str] = None,
         status: Optional[str] = None,
         page: Optional[int] = 1,
-        sort: Optional[str] = "id",  # <-- Параметр сортировки
-        order: Optional[str] = "desc",  # <-- Порядок (asc/desc)
+        sort: Optional[str] = "id",
+        order: Optional[str] = "desc",
         service: UserService = Depends(get_service),
         db: Session = Depends(get_db)):
     check_access(request)
 
     filters = {'query': query, 'role': role, 'status': status, 'page': page}
 
-    # Передаем параметры сортировки в репозиторий
     users = service.repository.get(filters, sort_by=sort, sort_order=order)
 
     count_query = db.query(Users)
@@ -88,8 +87,8 @@ async def index(
         'total_count': total_count,
         'selected_role': role,
         'selected_status': status,
-        'current_sort': sort,  # <-- Передаем в шаблон
-        'current_order': order,  # <-- Передаем в шаблон
+        'current_sort': sort,
+        'current_order': order,
         'roles': list(UserRole),
         'statuses': list(UserStatus)
     })
@@ -228,7 +227,7 @@ async def update(
         })
 
 
-@router.delete('/users/{user_id}', name='admin.users.delete')
+@router.post('/users/{user_id}/delete', name='admin.users.delete')
 async def delete(user_id: int, request: Request, service: UserService = Depends(get_service)):
     check_access(request)
     if user_id == request.session['auth_id']:
@@ -247,4 +246,8 @@ async def delete(user_id: int, request: Request, service: UserService = Depends(
         service.delete(user_id)
         msg = translator.gettext("admin.toast.deleted")
 
-    return {"message": msg}
+    url = request.url_for('admin.users.index').include_query_params(
+        toast_msg=msg,
+        toast_type="success"
+    )
+    return RedirectResponse(url=url, status_code=302)

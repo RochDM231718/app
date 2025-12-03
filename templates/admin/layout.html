@@ -214,6 +214,37 @@
         </div>
     </div>
 
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="actionConfirmationSidebar" aria-labelledby="actionConfirmationLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="actionConfirmationLabel">{{ gettext('admin.confirmation.title') }}</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column">
+            <div class="mb-4">
+                <div id="action-icon" class="text-center mb-3 text-warning">
+                    <i class="fa fa-exclamation-triangle fa-4x"></i>
+                </div>
+                <p class="text-center fs-5" id="action-message">
+                    {{ gettext('admin.confirmation.message_default') }}
+                </p>
+                <p class="text-center text-muted small" id="action-subtext">
+                    {{ gettext('admin.confirmation.cannot_undo') }}
+                </p>
+            </div>
+
+            <div class="mt-auto">
+                <form id="action-confirm-form" method="POST" action="">
+                    <button type="submit" id="action-confirm-btn" class="btn btn-danger w-100 mb-2">
+                        {{ gettext('admin.confirm') }}
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="offcanvas">
+                        {{ gettext('admin.cancel') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', path='assets/js/bootstrap.bundle.min.js') }}"></script>
 
     <script>
@@ -241,6 +272,36 @@
             const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
             toast.show();
             toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+        }
+
+        /**
+         * Функция для вызова меню подтверждения
+         */
+        function openConfirmation(url, title, message, btnClass = 'btn-danger', btnText = 'Confirm') {
+            document.getElementById('action-confirm-form').action = url;
+
+            if(title) document.getElementById('actionConfirmationLabel').innerText = title;
+            if(message) document.getElementById('action-message').innerText = message;
+
+            const btn = document.getElementById('action-confirm-btn');
+            btn.className = `btn ${btnClass} w-100 mb-2`;
+            if(btnText) btn.innerText = btnText;
+
+            const iconDiv = document.getElementById('action-icon');
+            if (btnClass.includes('danger')) {
+                iconDiv.className = 'text-center mb-3 text-danger';
+                iconDiv.innerHTML = '<i class="fa fa-trash-o fa-4x"></i>';
+            } else if (btnClass.includes('success')) {
+                iconDiv.className = 'text-center mb-3 text-success';
+                iconDiv.innerHTML = '<i class="fa fa-check-circle-o fa-4x"></i>';
+            } else {
+                iconDiv.className = 'text-center mb-3 text-primary';
+                iconDiv.innerHTML = '<i class="fa fa-question-circle-o fa-4x"></i>';
+            }
+
+            const sidebarEl = document.getElementById('actionConfirmationSidebar');
+            const sidebar = new bootstrap.Offcanvas(sidebarEl);
+            sidebar.show();
         }
 
         document.addEventListener('DOMContentLoaded', () => {

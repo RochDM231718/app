@@ -131,11 +131,27 @@
 
                 {% if request.session['auth_id'] != user.id and request.session['auth_role'] in ['moderator', 'super_admin'] %}
                     {% if user.status.value == 'deleted' %}
-                        <button class="btn btn-sm btn-danger ms-1" onclick="deleteUser({{ user.id }}, true)" title="{{ gettext('admin.btn.delete_permanent') }}">
+                        <button type="button" class="btn btn-sm btn-danger ms-1"
+                                onclick="openConfirmation(
+                                    '{{ url_for('admin.users.delete', user_id=user.id) }}',
+                                    '{{ gettext('admin.users.delete_permanent_confirm') }}',
+                                    '{{ gettext('admin.users.delete_permanent_confirm') }}',
+                                    'btn-danger',
+                                    '{{ gettext('admin.btn.delete_permanent') }}'
+                                )"
+                                title="{{ gettext('admin.btn.delete_permanent') }}">
                            <i class="fa fa-times-circle"></i>
                         </button>
                     {% else %}
-                        <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteUser({{ user.id }}, false)" title="{{ gettext('admin.btn.delete') }}">
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-1"
+                                onclick="openConfirmation(
+                                    '{{ url_for('admin.users.delete', user_id=user.id) }}',
+                                    '{{ gettext('admin.users.delete_confirmation') }}',
+                                    '{{ gettext('admin.users.delete_confirmation') }}',
+                                    'btn-danger',
+                                    '{{ gettext('admin.btn.delete') }}'
+                                )"
+                                title="{{ gettext('admin.btn.delete') }}">
                            <i class="fa fa-trash-o"></i>
                         </button>
                     {% endif %}
@@ -150,35 +166,6 @@
 {% endif %}
 
 <script>
-// Функция удаления с использованием стандартного confirm
-async function deleteUser(id, isPermanent) {
-    let msg = isPermanent ? "{{ gettext('admin.users.delete_permanent_confirm') }}" : "{{ gettext('admin.users.delete_confirmation') }}";
-
-    if (!confirm(msg)) return;
-
-    try {
-        const res = await fetch(`/admin/users/${id}`, { method: "DELETE" });
-        if (res.ok) {
-            const data = await res.json();
-            // Перезагрузка с параметрами для тоста
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('toast_msg', data.message);
-            newUrl.searchParams.set('toast_type', "success");
-            window.location.href = newUrl.toString();
-        } else {
-            if (typeof showToast === "function") {
-                showToast("{{ gettext('admin.failed_delete') }}", 'error');
-            } else {
-                alert("{{ gettext('admin.failed_delete') }}");
-            }
-        }
-    } catch (e) {
-        if (typeof showToast === "function") {
-            showToast("Error: " + e, 'error');
-        }
-    }
-}
-
 // Логика поиска "на лету"
 const searchInput = document.getElementById('user-search-input');
 const roleSelect = document.getElementById('role-select');
