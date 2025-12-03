@@ -1,0 +1,56 @@
+{% extends 'layout.html' %}
+{% set title = gettext('admin.achievements.upload_title') %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">{{ gettext('admin.achievements.upload_title') }}</h5>
+            </div>
+            <div class="card-body">
+                {% if error_msg %}
+                    <div class="alert alert-danger">{{ error_msg }}</div>
+                {% endif %}
+
+                <form method="post" action="{{ url_for('admin.achievements.store') }}" enctype="multipart/form-data">
+
+                    <div class="mb-3">
+                        <label for="title" class="form-label">{{ gettext('admin.achievements.doc_title') }} <span class="text-danger">*</span></label>
+                        <input type="text" name="title" class="form-control" id="title" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">{{ gettext('admin.achievements.description') }}</label>
+                        <textarea name="description" class="form-control" id="description" rows="3" placeholder="{{ gettext('admin.achievements.description_placeholder') }}"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="file" class="form-label">{{ gettext('admin.achievements.file') }} <span class="text-danger">*</span></label>
+
+                         <div class="input-group">
+                            <label class="input-group-text btn btn-outline-secondary" for="file">
+                                {{ gettext('admin.choose_file') }}
+                            </label>
+                            <input type="file" name="file" class="form-control d-none" id="file" required onchange="updateFileLabel(this)">
+                            <input type="text" class="form-control bg-white" id="file-text" value="{{ gettext('admin.no_file_chosen') }}" readonly onclick="document.getElementById('file').click()">
+                         </div>
+                        <div class="form-text">{{ gettext('admin.achievements.file_help') }}</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin.achievements.index') }}" class="btn btn-light">{{ gettext('admin.cancel') }}</a>
+                        <button type="submit" class="btn btn-success">{{ gettext('admin.upload') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateFileLabel(input) {
+        const fileName = input.files[0] ? input.files[0].name : "{{ gettext('admin.no_file_chosen') }}";
+        document.getElementById('file-text').value = fileName;
+    }
+</script>
+{% endblock %}

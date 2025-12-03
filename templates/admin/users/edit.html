@@ -1,0 +1,130 @@
+    {% extends 'layout.html' %}
+{% set title = gettext('admin.users.edit_user_title') + " - " + user.first_name + " " + user.last_name %}
+
+{% block content %}
+<form method="post" action="{{ url_for('admin.users.update', id=user.id) }}" class="row" enctype="multipart/form-data">
+    <div class="col-12">
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-light ms-2 rounded-3 float-end">{{ gettext('admin.back') }}</a>
+        <button type="submit" class="btn btn-primary rounded-3 float-end">{{ gettext('admin.save') }}</button>
+    </div>
+
+    <div class="col-12 mb-4 text-center">
+        <div class="d-flex justify-content-center align-items-center flex-column">
+            {% if user.avatar_path %}
+            <img src="/{{ user.avatar_path }}" alt="Avatar" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #eee;">
+            {% else %}
+            <div class="rounded-circle mb-3 bg-secondary d-flex align-items-center justify-content-center text-white" style="width: 150px; height: 150px; font-size: 3rem;">
+                {{ user.first_name[0] }}{{ user.last_name[0] }}
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <span class="badge bg-primary-brand rounded-pill px-3 py-2">
+                    <i class="fa fa-file-text-o"></i> {{ gettext('admin.total_documents') }}: {{ total_docs }}
+                </span>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">{{ gettext('admin.users.change_avatar') }}</label>
+
+                <div class="input-group">
+                    <label class="input-group-text btn btn-outline-secondary" for="avatar">
+                        {{ gettext('admin.choose_file') }}
+                    </label>
+                    <input type="file" name="avatar" class="form-control d-none" id="avatar" accept="image/*" onchange="updateFileName(this)">
+                    <input type="text" class="form-control bg-white" id="avatar-text" value="{{ gettext('admin.no_file_chosen') }}" readonly onclick="document.getElementById('avatar').click()" style="cursor: pointer;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6">
+        <div class="form-group">
+            <label for="first_name" class="form-label">{{ gettext('admin.users.first_name') }}</label>
+            <input type="text" value="{{ user.first_name }}" name="first_name" class="form-control" id="first_name">
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="form-group">
+            <label for="last_name" class="form-label">{{ gettext('admin.users.last_name') }}</label>
+            <input type="text" value="{{ user.last_name }}" name="last_name" class="form-control" id="last_name">
+        </div>
+    </div>
+    <div class="col-6 mt-3">
+        <div class="form-group">
+            <label for="email" class="form-label">{{ gettext('admin.users.email') }}</label>
+            <input type="email" value="{{ user.email }}" name="email" class="form-control" id="email">
+        </div>
+    </div>
+    <div class="col-6 mt-3">
+        <div class="form-group">
+            <label for="phone_number" class="form-label">{{ gettext('admin.users.phone') }}</label>
+            <input type="text" value="{{ user.phone_number }}" name="phone_number" class="form-control" id="phone_number">
+        </div>
+    </div>
+
+    <div class="col-6 mt-3">
+        <div class="form-group">
+            <label for="role" class="form-label">{{ gettext('admin.users.role') }}</label>
+            <input type="text" value="{{ user.role.value | replace('_', ' ') | title }}" class="form-control" disabled>
+        </div>
+    </div>
+</form>
+
+<div class="row mt-5">
+    <div class="col-12 d-flex justify-content-between align-items-center border-bottom pb-2 mb-4">
+        <h4 class="mb-0 text-muted">{{ gettext('admin.uploaded_documents') }}</h4>
+    </div>
+
+    {% if achievements %}
+        {% for item in achievements %}
+        <div class="col-md-3 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px; overflow: hidden;">
+                    {% if item.file_path.endswith('.pdf') %}
+                    <i class="fa fa-file-pdf-o text-danger" style="font-size: 4rem;"></i>
+                    {% else %}
+                    <img src="/{{ item.file_path }}" class="w-100 h-100" style="object-fit: cover;" alt="Preview">
+                    {% endif %}
+                </div>
+
+                <div class="card-body">
+                    <h6 class="card-title text-truncate" title="{{ item.title }}">{{ item.title }}</h6>
+                    <p class="card-text small text-muted">
+                        {% if item.created_at %}
+                            {{ item.created_at.strftime('%Y-%m-%d') }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </p>
+
+                    <div class="mb-2">
+                        {% if item.status.value == 'pending' %}
+                        <span class="badge bg-warning text-dark">{{ gettext('admin.status.pending') }}</span>
+                        {% elif item.status.value == 'approved' %}
+                        <span class="badge bg-success">{{ gettext('admin.status.approved') }}</span>
+                        {% else %}
+                        <span class="badge bg-danger">{{ gettext('admin.status.rejected') }}</span>
+                        {% endif %}
+                    </div>
+
+                    <a href="/{{ item.file_path }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">{{ gettext('admin.btn.open') }}</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12 text-center text-muted">
+            <p>{{ gettext('admin.user_no_docs') }}</p>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    function updateFileName(input) {
+        const defaultText = "{{ gettext('admin.no_file_chosen') }}";
+        const fileName = input.files[0] ? input.files[0].name : defaultText;
+        document.getElementById('avatar-text').value = fileName;
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends 'layout.html' %}
+{% set title = gettext('admin.moderation.pending_users_title') %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">{{ title }}</h3>
+    <span class="badge bg-secondary fs-6">{{ gettext('admin.total') }}: {{ total_count }}</span>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th>{{ gettext('admin.users.user') }}</th>
+                        <th>{{ gettext('admin.users.email') }}</th>
+                        <th>{{ gettext('admin.users.phone') }}</th>
+                        <th class="text-end">{{ gettext('admin.actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if user.avatar_path %}
+                                    <img src="/{{ user.avatar_path }}" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                {% else %}
+                                    <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                        {{ user.first_name[0] }}{{ user.last_name[0] }}
+                                    </div>
+                                {% endif %}
+                                {{ user.first_name }} {{ user.last_name }}
+                            </div>
+                        </td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.phone_number or '-' }}</td>
+                        <td class="text-end">
+                            <div class="btn-group" role="group">
+                                <form action="{{ url_for('admin.moderation.users.approve', id=user.id) }}" method="post" class="me-1">
+                                    <button type="submit" class="btn btn-sm btn-success" title="{{ gettext('admin.btn.approve') }}">
+                                        <i class="fa fa-check"></i>
+                                    </button>
+                                </form>
+
+                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="collapse" data-bs-target="#rejectUserRow{{ user.id }}" aria-expanded="false" title="{{ gettext('admin.btn.reject') }}">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td colspan="4" class="p-0 border-0">
+                            <div class="collapse bg-light" id="rejectUserRow{{ user.id }}">
+                                <div class="p-3 border-bottom shadow-inner text-end">
+                                    <span class="me-3 fw-bold text-danger">{{ gettext('admin.moderation.confirm_rejection') }}?</span>
+
+                                    <form action="{{ url_for('admin.moderation.users.reject', id=user.id) }}" method="post" class="d-inline">
+                                        <button type="button" class="btn btn-sm btn-secondary me-1" data-bs-toggle="collapse" data-bs-target="#rejectUserRow{{ user.id }}">{{ gettext('admin.cancel') }}</button>
+                                        <button type="submit" class="btn btn-sm btn-danger">{{ gettext('admin.btn.reject') }}</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            <i class="fa fa-users fa-2x mb-3 d-block"></i>
+                            {{ gettext('admin.moderation.no_pending_users') }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
