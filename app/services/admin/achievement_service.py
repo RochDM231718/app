@@ -4,12 +4,12 @@ import shutil
 from pathlib import Path
 import uuid
 import os
+from datetime import datetime  # <-- Импорт для работы с датой
 
 from app.repositories.admin.achievement_repository import AchievementRepository
 from app.models.achievement import Achievement
 from app.models.enums import AchievementStatus
 from app.schemas.admin.achievements import AchievementCreate
-
 
 
 class AchievementService:
@@ -27,7 +27,8 @@ class AchievementService:
             "title": obj_in.title,
             "description": obj_in.description,
             "file_path": file_path,
-            "status": AchievementStatus.PENDING
+            "status": AchievementStatus.PENDING,
+            "created_at": datetime.now()  # <-- Явная установка текущего времени
         }
 
         return self.repo.create(achievement_data)
