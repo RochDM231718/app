@@ -1,4 +1,4 @@
-    {% extends 'layout.html' %}
+{% extends 'layout.html' %}
 {% set title = gettext('admin.users.edit_user_title') + " - " + user.first_name + " " + user.last_name %}
 
 {% block content %}
@@ -71,6 +71,8 @@
     </div>
 </form>
 
+{# --- ВАЖНОЕ ИЗМЕНЕНИЕ: Скрываем документы, если это профиль текущего пользователя --- #}
+{% if request.session['auth_id'] != user.id %}
 <div class="row mt-5">
     <div class="col-12 d-flex justify-content-between align-items-center border-bottom pb-2 mb-4">
         <h4 class="mb-0 text-muted">{{ gettext('admin.uploaded_documents') }}</h4>
@@ -80,6 +82,7 @@
         {% for item in achievements %}
         <div class="col-md-3 mb-4">
             <div class="card h-100 shadow-sm">
+                {# Превью документа #}
                 <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px; overflow: hidden;">
                     {% if item.file_path.endswith('.pdf') %}
                     <i class="fa fa-file-pdf-o text-danger" style="font-size: 4rem;"></i>
@@ -119,6 +122,7 @@
         </div>
     {% endif %}
 </div>
+{% endif %}
 
 <script>
     function updateFileName(input) {
