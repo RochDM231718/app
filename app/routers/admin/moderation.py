@@ -1,50 +1,53 @@
-from fastapi import Request, Depends, HTTPException, Form
+from fastapi import APIRouter, Request, Depends, HTTPException, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.orm import Session
-from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload  # <-- ВАЖНО
 from app.routers.admin.admin import guard_router, templates, get_db
 from app.repositories.admin.user_repository import UserRepository
-from app.services.admin.user_service import UserService
 from app.repositories.admin.achievement_repository import AchievementRepository
+from app.services.admin.user_service import UserService
 from app.services.admin.achievement_service import AchievementService
 from app.models.user import Users
-from app.models.enums import UserRole
+from app.models.achievement import Achievement
+from app.models.enums import UserStatus, AchievementStatus, UserRole
 from app.infrastructure.tranaslations import TranslationManager
 
 router = guard_router
 
 
-def get_user_service(db: Session = Depends(get_db)):
+def get_user_service(db: AsyncSession = Depends(get_db)):
     return UserService(UserRepository(db))
 
 
-def get_achievement_service(db: Session = Depends(get_db)):
+def get_achievement_service(db: AsyncSession = Depends(get_db)):
     return AchievementService(AchievementRepository(db))
 
 
-async def ensure_moderator(request: Request, db: Session = Depends(get_db)):
-    user_id = request.session.get('auth_id')
-    if not user_id: raise HTTPException(status_code=403, detail="Not authenticated")
-    user = db.query(Users).get(user_id)
-    if not user: raise HTTPException(status_code=403, detail="User not found")
-    if user.role not in [UserRole.MODERATOR, UserRole.SUPER_ADMIN]: raise HTTPException(status_code=403,
-                                                                                        detail="Access denied")
-    return user
+def check_moderator(request: Request):
+    role = request.session.get('auth_role')
+    if role not in [UserRole.MODERATOR, UserRole.SUPER_ADMIN]:
+        raise HTTPException(status_code=403, detail="Access denied")
 
 
+# --- USERS ---
 @router.get('/moderation/users', response_class=HTMLResponse, name='admin.moderation.users')
-async def pending_users(request: Request, service: UserService = Depends(get_user_service),
-                        admin=Depends(ensure_moderator)):
-    users = service.get_pending_users()
-    total_count = len(users) if users else 0
+async def pending_users(request: Request, db: AsyncSession = Depends(get_db)):
+    check_moderator(request)
+
+    stmt = select(Users).filter(Users.status == UserStatus.PENDING).order_by(Users.id.desc())
+    result = await db.execute(stmt)
+    users = result.scalars().all()
+
+    total_count = len(users)
     return templates.TemplateResponse('moderation/users.html',
                                       {'request': request, 'users': users, 'total_count': total_count})
 
 
 @router.post('/moderation/users/{id}/approve', name='admin.moderation.users.approve')
-async def approve_user(id: int, request: Request, service: UserService = Depends(get_user_service),
-                       admin=Depends(ensure_moderator)):
-    service.approve_user(id)
+async def approve_user(id: int, request: Request, service: UserService = Depends(get_user_service)):
+    check_moderator(request)
+    await service.repository.update(id, {"status": UserStatus.ACTIVE})
 
     translator = TranslationManager()
     url = request.url_for('admin.moderation.users').include_query_params(
@@ -53,9 +56,9 @@ async def approve_user(id: int, request: Request, service: UserService = Depends
 
 
 @router.post('/moderation/users/{id}/reject', name='admin.moderation.users.reject')
-async def reject_user(id: int, request: Request, service: UserService = Depends(get_user_service),
-                      admin=Depends(ensure_moderator)):
-    service.reject_registration(id)
+async def reject_user(id: int, request: Request, service: UserService = Depends(get_user_service)):
+    check_moderator(request)
+    await service.repository.update(id, {"status": UserStatus.REJECTED})
 
     translator = TranslationManager()
     url = request.url_for('admin.moderation.users').include_query_params(
@@ -63,21 +66,39 @@ async def reject_user(id: int, request: Request, service: UserService = Depends(
     return RedirectResponse(url=url, status_code=302)
 
 
+# --- ACHIEVEMENTS ---
 @router.get('/moderation/achievements', response_class=HTMLResponse, name='admin.moderation.achievements')
-async def pending_achievements(request: Request, service: AchievementService = Depends(get_achievement_service),
-                               admin=Depends(ensure_moderator)):
-    achievements = service.get_all_pending()
-    total_count = len(achievements) if achievements else 0
+async def pending_achievements(request: Request, db: AsyncSession = Depends(get_db)):
+    check_moderator(request)
+
+    # Подгружаем пользователя, так как шаблон отображает item.user.first_name
+    stmt = select(Achievement).options(selectinload(Achievement.user)).filter(
+        Achievement.status == AchievementStatus.PENDING).order_by(Achievement.created_at.desc())
+    result = await db.execute(stmt)
+    achievements = result.scalars().all()
+
+    total_count = len(achievements)
     return templates.TemplateResponse('moderation/achievements.html',
                                       {'request': request, 'achievements': achievements, 'total_count': total_count})
 
 
-@router.post('/moderation/achievements/{id}/update', name='admin.moderation.achievements.update')
-async def update_achievement_status(id: int, request: Request, status: str = Form(...),
-                                    rejection_reason: Optional[str] = Form(None),
-                                    service: AchievementService = Depends(get_achievement_service),
-                                    admin=Depends(ensure_moderator)):
-    service.update_status(id, status, rejection_reason)
+@router.post('/moderation/achievements/{id}', name='admin.moderation.achievements.update')
+async def update_achievement_status(
+        id: int,
+        request: Request,
+        status: str = Form(...),
+        rejection_reason: str = Form(None),
+        service: AchievementService = Depends(get_achievement_service)
+):
+    check_moderator(request)
+
+    data = {"status": status}
+    if status == "rejected" and rejection_reason:
+        data["rejection_reason"] = rejection_reason
+    elif status == "approved":
+        data["rejection_reason"] = None
+
+    await service.repo.update(id, data)
 
     translator = TranslationManager()
     msg = translator.gettext("admin.toast.approved") if status == 'approved' else translator.gettext(

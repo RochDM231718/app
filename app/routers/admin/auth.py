@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.routers.admin.admin import templates, get_db
 from app.services.auth_service import AuthService
 from app.services.admin.user_service import UserService
 from app.repositories.admin.user_repository import UserRepository
 from app.infrastructure.tranaslations import TranslationManager
 from app.models.enums import UserStatus
-from passlib.context import CryptContext
 import time
 
 router = APIRouter(
@@ -15,12 +14,8 @@ router = APIRouter(
     tags=["admin_auth"]
 )
 
-
-def get_user_service(db: Session = Depends(get_db)):
+def get_user_service(db: AsyncSession = Depends(get_db)):
     return UserService(UserRepository(db))
-
-
-# --- LOGIN ---
 
 @router.get('/login', response_class=HTMLResponse, name='admin.auth.login.form')
 async def show_login(request: Request):
@@ -28,12 +23,12 @@ async def show_login(request: Request):
         return RedirectResponse(url="/admin/dashboard", status_code=302)
     return templates.TemplateResponse('auth/sign-in.html', {'request': request})
 
-
 @router.post('/login', response_class=HTMLResponse, name='admin.auth.login')
 async def login(
         request: Request,
         email: str = Form(...),
-        password: str = Form(...)
+        password: str = Form(...),
+        db: AsyncSession = Depends(get_db)
 ):
     last_attempt = request.session.get('last_login_attempt')
     current_time = time.time()
@@ -42,13 +37,14 @@ async def login(
         return templates.TemplateResponse('auth/sign-in.html', {
             'request': request,
             'error_msg': "Too many attempts. Please wait.",
-            'form_data': {'email': email}  # Возвращаем email
+            'form_data': {'email': email}
         })
 
     request.session['last_login_attempt'] = current_time
 
-    auth_service = AuthService()
-    user = auth_service.authenticate(email, password, role="admin")
+    auth_service = AuthService(db)
+    # ВАЖНО: await
+    user = await auth_service.authenticate(email, password, role="admin")
 
     translator = TranslationManager()
 
@@ -56,7 +52,7 @@ async def login(
         return templates.TemplateResponse('auth/sign-in.html', {
             'request': request,
             'error_msg': translator.gettext("api.auth.invalid_credentials"),
-            'form_data': {'email': email}  # Возвращаем email
+            'form_data': {'email': email}
         })
 
     if user.status == UserStatus.PENDING:
@@ -90,7 +86,6 @@ async def login(
     )
     return RedirectResponse(url=url, status_code=302)
 
-
 @router.get('/logout', name='admin.auth.logout')
 async def logout(request: Request):
     request.session.clear()
@@ -101,15 +96,11 @@ async def logout(request: Request):
     )
     return RedirectResponse(url=url, status_code=302)
 
-
-# --- REGISTRATION ---
-
 @router.get('/register', response_class=HTMLResponse, name='admin.auth.register.form')
 async def show_register(request: Request):
     if request.session.get('auth_id'):
         return RedirectResponse(url="/admin/dashboard", status_code=302)
     return templates.TemplateResponse('auth/register.html', {'request': request})
-
 
 @router.post('/register', response_class=HTMLResponse, name='admin.auth.register.store')
 async def register_store(
@@ -121,13 +112,7 @@ async def register_store(
         password_confirm: str = Form(...),
         service: UserService = Depends(get_user_service)
 ):
-    # Формируем данные для возврата (пароль никогда не возвращаем!)
-    form_data = {
-        'first_name': first_name,
-        'last_name': last_name,
-        'email': email
-    }
-
+    form_data = {'first_name': first_name, 'last_name': last_name, 'email': email}
     translator = TranslationManager()
 
     if password != password_confirm:
@@ -138,7 +123,8 @@ async def register_store(
         })
 
     try:
-        service.register_user(first_name, last_name, email, password)
+        # ВАЖНО: await
+        await service.register_user(first_name, last_name, email, password)
 
         return templates.TemplateResponse('auth/sign-in.html', {
             'request': request,
@@ -146,14 +132,12 @@ async def register_store(
         })
 
     except ValueError as e:
-        # Переводим ошибку (например, "admin.auth.email_registered" или "admin.auth.password_too_short")
         error_key = str(e)
         error_text = translator.gettext(error_key)
-
         return templates.TemplateResponse('auth/register.html', {
             'request': request,
             'error_msg': error_text,
-            'form_data': form_data  # Возвращаем введенные данные
+            'form_data': form_data
         })
     except Exception as e:
         return templates.TemplateResponse('auth/register.html', {
@@ -161,9 +145,6 @@ async def register_store(
             'error_msg': f"Error: {str(e)}",
             'form_data': form_data
         })
-
-
-# --- FORGOT PASSWORD ---
 
 @router.get('/forgot-password', response_class=HTMLResponse, name='admin.auth.forgot_password.form')
 async def show_forgot_password(request: Request):

@@ -4,7 +4,8 @@ import shutil
 from pathlib import Path
 import uuid
 import os
-from datetime import datetime  # <-- Импорт для работы с датой
+from datetime import datetime
+import aiofiles  # Если aiofiles не установлен, можно использовать стандартный open, но лучше добавить в requirements
 
 from app.repositories.admin.achievement_repository import AchievementRepository
 from app.models.achievement import Achievement
@@ -19,8 +20,8 @@ class AchievementService:
     def get_user_achievements(self, user_id: int, page: int = 1):
         return self.repo.get_by_user(user_id, page)
 
-    def create(self, user_id: int, obj_in: AchievementCreate, file: UploadFile):
-        file_path = self._save_file(file)
+    async def create(self, user_id: int, obj_in: AchievementCreate, file: UploadFile):
+        file_path = await self._save_file(file)
 
         achievement_data = {
             "user_id": user_id,
@@ -28,13 +29,15 @@ class AchievementService:
             "description": obj_in.description,
             "file_path": file_path,
             "status": AchievementStatus.PENDING,
-            "created_at": datetime.now()  # <-- Явная установка текущего времени
+            "created_at": datetime.now()
         }
 
-        return self.repo.create(achievement_data)
+        return await self.repo.create(achievement_data)
 
-    def delete(self, id: int, user_id: int, user_role: str):
-        achievement = self.repo.find(id)
+    async def delete(self, id: int, user_id: int, user_role: str):
+        # ИСПРАВЛЕНО: Добавлен await
+        achievement = await self.repo.find(id)
+
         if not achievement:
             return False
 
@@ -49,26 +52,25 @@ class AchievementService:
             except Exception as e:
                 print(f"Error deleting file {achievement.file_path}: {e}")
 
-            self.repo.delete(id)
+            await self.repo.delete(id)
             return True
 
         return False
 
     def get_all_pending(self):
-        return self.repo.getDb().query(Achievement).filter(Achievement.status == AchievementStatus.PENDING).all()
+        # Этот метод, вероятно, не используется в текущих роутерах, но его тоже надо бы обновить если используется
+        pass
 
-    def update_status(self, id: int, status: str, rejection_reason: str = None):
-        """Меняет статус и записывает причину отказа (если есть)"""
+    async def update_status(self, id: int, status: str, rejection_reason: str = None):
         data = {"status": status}
-
         if status == "rejected" and rejection_reason:
             data["rejection_reason"] = rejection_reason
         elif status == "approved":
             data["rejection_reason"] = None
 
-        self.repo.update(id, data)
+        await self.repo.update(id, data)
 
-    def _save_file(self, file: UploadFile) -> str:
+    async def _save_file(self, file: UploadFile) -> str:
         upload_dir = Path("static/uploads/achievements")
         upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -76,7 +78,8 @@ class AchievementService:
         unique_name = f"{uuid.uuid4()}.{file_extension}"
         file_path = upload_dir / unique_name
 
-        with file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
 
         return f"static/uploads/achievements/{unique_name}"

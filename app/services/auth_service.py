@@ -1,7 +1,7 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from fastapi import Request
 from passlib.context import CryptContext
-from app.infrastructure.database.connection import get_database_connection
 from app.models.enums import UserTokenType, UserRole, UserStatus
 from app.models.user import Users
 from app.repositories.admin.user_token_repository import UserTokenRepository
@@ -14,7 +14,8 @@ from app.infrastructure.jwt_handler import create_access_token, create_refresh_t
 import os
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-db_connection = get_database_connection()
+
+# Инициализацию mailer можно оставить глобальной
 mailer = MailBridge(provider='smtp',
                     host=os.getenv('MAIL_HOST'),
                     port=os.getenv('MAIL_PORT'),
@@ -26,12 +27,14 @@ mailer = MailBridge(provider='smtp',
 
 
 class AuthService:
-    def __init__(self):
-        self.db: Session = db_connection.get_session()
-        self.model = self.db.query(Users)
+    def __init__(self, db: AsyncSession):
+        self.db = db
 
-    def authenticate(self, email: str, password: str, role: str):
-        user = self.model.filter(Users.email == email).first()
+    async def authenticate(self, email: str, password: str, role: str):
+        # Асинхронный запрос
+        stmt = select(Users).where(Users.email == email)
+        result = await self.db.execute(stmt)
+        user = result.scalars().first()
 
         if not user:
             return None
@@ -39,12 +42,10 @@ class AuthService:
         if not self.verify_password(password, user.hashed_password):
             return None
 
-        # Проверка BANNED удалена
-
         return user
 
-    def api_authenticate(self, email: str, password: str, role: str = "User"):
-        user = self.authenticate(email, password, role)
+    async def api_authenticate(self, email: str, password: str, role: str = "User"):
+        user = await self.authenticate(email, password, role)
         if not user:
             return None
 
@@ -65,8 +66,10 @@ class AuthService:
             }
         }
 
-    def register(self, data: RegisterSchema) -> bool:
-        if self.model.filter(Users.email == data.email).first():
+    async def register(self, data: RegisterSchema) -> bool:
+        stmt = select(Users).where(Users.email == data.email)
+        result = await self.db.execute(stmt)
+        if result.scalars().first():
             return False
 
         hashed_pw = pwd_context.hash(data.password)
@@ -82,29 +85,37 @@ class AuthService:
         )
 
         self.db.add(new_user)
-        self.db.commit()
+        await self.db.commit()
         return True
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         return pwd_context.verify(plain_password, hashed_password)
 
-    def user(self, request: Request):
+    async def user(self, request: Request):
         if 'auth_id' in request.session:
-            user = self.model.filter(Users.id == request.session['auth_id']).first()
+            stmt = select(Users).where(Users.id == request.session['auth_id'])
+            result = await self.db.execute(stmt)
+            user = result.scalars().first()
             if not user:
                 return None
             return user
 
         return None
 
-    def reset_password(self, email: str, request: Request) -> bool:
-        user = self.model.filter(Users.email == email).first()
+    async def reset_password(self, email: str, request: Request) -> bool:
+        stmt = select(Users).where(Users.email == email)
+        result = await self.db.execute(stmt)
+        user = result.scalars().first()
+
         if not user:
             return False
 
         user_token_data = UserTokenCreate(user_id=user.id, type=UserTokenType.RESET_PASSWORD)
+        # Передаем асинхронную сессию в репозиторий
         user_token_service = UserTokenService(UserTokenRepository(self.db))
-        user_token = user_token_service.create(data=user_token_data)
+        # Важно: если create в UserTokenService стал async, тут нужен await
+        user_token = await user_token_service.create(data=user_token_data)
+
         self._send_reset_password_email(user, user_token, request)
 
         return True

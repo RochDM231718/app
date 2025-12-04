@@ -1,22 +1,21 @@
 from app.models.user import Users
 from app.repositories.admin.crud_repository import CrudRepository
-from sqlalchemy.orm import Session
-from sqlalchemy import or_, desc, asc  # <-- Добавили импорты
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_, desc, asc
 from app.schemas.admin.users import UserCreate
 
 
 class UserRepository(CrudRepository):
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         super().__init__(db, Users)
 
-    # Обновленный метод с сортировкой
-    def get(self, filters: dict = None, sort_by: str = 'id', sort_order: str = 'desc'):
-        users = self.db.query(self.model)
+    async def get(self, filters: dict = None, sort_by: str = 'id', sort_order: str = 'desc'):
+        stmt = select(self.model)
 
         if filters is not None:
             if 'query' in filters and filters['query'] != '':
                 like_term = f"%{filters['query']}%"
-                users = users.filter(
+                stmt = stmt.filter(
                     or_(
                         self.model.first_name.ilike(like_term),
                         self.model.last_name.ilike(like_term),
@@ -26,46 +25,51 @@ class UserRepository(CrudRepository):
                 )
 
             if 'role' in filters and filters['role']:
-                users = users.filter(self.model.role == filters['role'])
+                stmt = stmt.filter(self.model.role == filters['role'])
 
             if 'status' in filters and filters['status']:
-                users = users.filter(self.model.status == filters['status'])
+                stmt = stmt.filter(self.model.status == filters['status'])
 
-        # --- ЛОГИКА СОРТИРОВКИ ---
-        # Проверяем, есть ли такое поле в модели, чтобы избежать ошибок
+            if 'email' in filters and filters['email']:
+                stmt = stmt.filter(self.model.email == filters['email'])
+
+        # --- СОРТИРОВКА ---
         if hasattr(self.model, sort_by):
             sort_attr = getattr(self.model, sort_by)
             if sort_order == 'asc':
-                users = users.order_by(asc(sort_attr))
+                stmt = stmt.order_by(asc(sort_attr))
             else:
-                users = users.order_by(desc(sort_attr))
+                stmt = stmt.order_by(desc(sort_attr))
         else:
-            # Сортировка по умолчанию
-            users = users.order_by(desc(self.model.id))
-        # -------------------------
+            stmt = stmt.order_by(desc(self.model.id))
 
-        users = self.paginate(users, filters)
+        # Пагинация (метод из родительского класса)
+        stmt = self.paginate(stmt, filters)
 
-        return users.all()
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
 
-    def create(self, obj_in: UserCreate):
-        user_dict = obj_in.model_dump(exclude={"password"})
-        db_obj = self.model(**user_dict)
+    async def create(self, obj_in):
+        # Если пришел Pydantic объект UserCreate
+        if isinstance(obj_in, UserCreate):
+            user_data = obj_in.model_dump(exclude={"password"})
+        elif isinstance(obj_in, dict):
+            user_data = obj_in
+        else:
+            user_data = obj_in.dict(exclude={"password"})
+
+        db_obj = self.model(**user_data)
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-    def update_password(self, id: int, password: str):
-        db_obj = self.db.query(Users).filter(Users.id == id).first()
-        db_obj.hashed_password = password
-        self.db.commit()
-        self.db.refresh(db_obj)
-
-    def hard_delete(self, id: int):
-        db_obj = self.db.query(Users).filter(Users.id == id).first()
+    async def update_password(self, id: int, password: str):
+        db_obj = await self.find(id)
         if db_obj:
-            self.db.delete(db_obj)
-            self.db.commit()
-            return True
-        return False
+            db_obj.hashed_password = password
+            await self.db.commit()
+            await self.db.refresh(db_obj)
+
+    async def hard_delete(self, id: int):
+        return await self.delete(id)

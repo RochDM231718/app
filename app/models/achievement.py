@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum as SQLAlchemyEnum, DateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func  # Импорт func
+from sqlalchemy.sql import func
 from app.infrastructure.database.connection import Base
 from app.models.enums import AchievementStatus
 
@@ -13,10 +13,12 @@ class Achievement(Base):
     title = Column(String)
     description = Column(String)
     file_path = Column(String)
-    status = Column(SQLAlchemyEnum(AchievementStatus), default=AchievementStatus.PENDING)
+
+    # native_enum=False исправляет ошибку типов в asyncpg
+    status = Column(SQLAlchemyEnum(AchievementStatus, native_enum=False), default=AchievementStatus.PENDING)
+
     rejection_reason = Column(String, nullable=True)
 
-    # Поле для сортировки
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("Users", back_populates="achievements")

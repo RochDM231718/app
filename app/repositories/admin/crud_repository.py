@@ -1,53 +1,69 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from .base import AbstractRepository
+from enum import Enum  # <-- Добавляем импорт
 
 
 class CrudRepository(AbstractRepository):
     ITEMS_PER_PAGE = 20
 
-    def __init__(self, db: Session, model):
+    def __init__(self, db: AsyncSession, model):
         self.db = db
         self.model = model
 
-    def getDb(self) -> Session:
+    def getDb(self) -> AsyncSession:
         return self.db
 
-    def find(self, id: int):
-        return self.db.query(self.model).get(id)
+    async def find(self, id: int):
+        stmt = select(self.model).where(self.model.id == id)
+        result = await self.db.execute(stmt)
+        return result.scalars().first()
 
-    def get(self, filters: dict = None):
-        items = self.db.query(self.model)
-        items = self.paginate(items, filters)
-        return items.all()
+    async def get(self, filters: dict = None):
+        stmt = select(self.model)
+        stmt = self.paginate(stmt, filters)
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
 
-    def create(self, obj_in):
+    async def create(self, obj_in):
         obj_data = obj_in if isinstance(obj_in, dict) else obj_in.dict()
         db_obj = self.model(**obj_data)
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-    def update(self, id: int, obj_in):
-        db_obj = self.find(id)
+    async def update(self, id: int, obj_in):
+        db_obj = await self.find(id)
+        if not db_obj:
+            return None
+
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
             update_data = obj_in.dict(exclude_unset=True)
 
         for field, value in update_data.items():
+            # ИСПРАВЛЕНИЕ: Если значение - Enum, берем его строковое представление
+            if isinstance(value, Enum):
+                value = value.value
+
             setattr(db_obj, field, value)
 
-        self.db.commit()
-        self.db.refresh(db_obj)
+        self.db.add(db_obj)
+        await self.db.commit()
+        await self.db.refresh(db_obj)
         return db_obj
 
-    def delete(self, id: int):
-        db_obj = self.find(id)
-        self.db.delete(db_obj)
-        self.db.commit()
+    async def delete(self, id: int):
+        db_obj = await self.find(id)
+        if db_obj:
+            await self.db.delete(db_obj)
+            await self.db.commit()
+            return True
+        return False
 
-    def paginate(self, items, filters):
+    def paginate(self, stmt, filters):
         if filters is not None and 'page' in filters and filters['page'] > 0:
-            items = items.limit(self.ITEMS_PER_PAGE).offset(self.ITEMS_PER_PAGE * (filters['page'] - 1))
-        return items
+            stmt = stmt.limit(self.ITEMS_PER_PAGE).offset(self.ITEMS_PER_PAGE * (filters['page'] - 1))
+        return stmt
