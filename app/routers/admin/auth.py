@@ -43,7 +43,6 @@ async def login(
     request.session['last_login_attempt'] = current_time
 
     auth_service = AuthService(db)
-    # ВАЖНО: await
     user = await auth_service.authenticate(email, password, role="admin")
 
     translator = TranslationManager()
@@ -123,7 +122,6 @@ async def register_store(
         })
 
     try:
-        # ВАЖНО: await
         await service.register_user(first_name, last_name, email, password)
 
         return templates.TemplateResponse('auth/sign-in.html', {

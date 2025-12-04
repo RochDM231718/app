@@ -22,19 +22,16 @@ class UserService:
         return self.repo
 
     async def find(self, id: int):
-        # Асинхронный вызов репозитория
         return await self.repo.find(id)
 
     async def create(self, user_data: UserCreate):
         user_dict = user_data.dict()
-        # Хешируем пароль перед сохранением
         if 'password' in user_dict:
             user_dict['hashed_password'] = pwd_context.hash(user_dict.pop('password'))
 
         return await self.repo.create(user_dict)
 
     async def register_user(self, first_name, last_name, email, password):
-        # Проверка на существование (используем фильтр)
         existing = await self.repo.get(filters={'email': email})
         if existing:
             raise ValueError("admin.auth.email_registered")
@@ -61,25 +58,19 @@ class UserService:
         unique_name = f"avatar_{user_id}_{uuid.uuid4().hex[:8]}.{file_extension}"
         file_path = upload_dir / unique_name
 
-        # Асинхронное чтение файла (не блокирует сервер)
         content = await file.read()
 
-        # Запись на диск (стандартный open блокирует поток, но это допустимо
-        # для небольших файлов; для идеала можно использовать aiofiles)
         with open(file_path, "wb") as buffer:
             buffer.write(content)
 
         return f"static/uploads/avatars/{unique_name}"
 
     async def delete(self, id: int):
-        # Soft delete (помечаем как удаленный)
         return await self.repo.update(id, {"status": UserStatus.DELETED})
 
     async def force_delete(self, id: int):
-        # Hard delete (полное удаление из базы)
         user = await self.find(id)
 
-        # Удаляем аватарку с диска, если она есть
         if user and user.avatar_path:
             try:
                 Path(user.avatar_path).unlink(missing_ok=True)

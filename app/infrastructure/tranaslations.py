@@ -10,13 +10,11 @@ class TranslationManager:
     _initialized = False
 
     def __new__(cls):
-        # Паттерн Синглтон: если экземпляр уже есть, возвращаем его
         if cls._instance is None:
             cls._instance = super(TranslationManager, cls).__new__(cls)
         return cls._instance
 
     def __init__(self):
-        # Если уже инициализировано, пропускаем (чтобы не читать файлы снова)
         if self._initialized:
             return
 
@@ -53,7 +51,6 @@ class TranslationManager:
         dictionary = self.translations.get(locale, self.translations.get('en', {}))
         text = dictionary.get(key, key)
 
-        # Объединяем replacements и kwargs
         if replacements is None:
             replacements = kwargs
         else:

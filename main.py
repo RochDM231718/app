@@ -20,7 +20,6 @@ from app.routers.api.auth import router as api_auth_router
 
 app = FastAPI()
 
-# --- MIDDLEWARE ---
 origins = ["*"]
 
 app.add_middleware(
@@ -34,12 +33,10 @@ app.add_middleware(
 app.add_middleware(GlobalContextMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=os.getenv('ADMIN_SECRET_KEY', 'secret'))
 
-# --- ФИКС FAVICON ---
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return Response(status_code=204)
 
-# --- ПОДКЛЮЧЕНИЕ РОУТЕРОВ ---
 app.include_router(admin_common_router)
 app.include_router(admin_auth_router)
 app.include_router(admin_dashboard_router)
@@ -50,10 +47,8 @@ app.include_router(admin_moderation_router)
 
 app.include_router(api_auth_router)
 
-# --- СТАТИКА ---
 app.mount("/static", CustomStaticFiles(directory="static"), name="static")
 
-# --- ГЛАВНАЯ СТРАНИЦА ---
 @app.get('/')
 async def welcome():
     return RedirectResponse(url="/admin/login")

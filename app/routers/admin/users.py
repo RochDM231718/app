@@ -239,7 +239,6 @@ async def update(
         )
         return RedirectResponse(url=url, status_code=302)
     except ValueError as e:
-        # При ошибке тоже нужно подгрузить связи, чтобы отрендерить шаблон
         stmt = select(Users).options(selectinload(Users.achievements)).where(Users.id == id)
         result = await db.execute(stmt)
         user = result.scalars().first()

@@ -98,7 +98,7 @@ def test_reset_password_success(mock_user_token_service_cls, auth_service):
     result = auth_service.reset_password("test@example.com", request)
 
     assert result is True
-    mock_user_token_service_cls.assert_called_once()  # service created
+    mock_user_token_service_cls.assert_called_once()
     mock_user_token_service.create.assert_called_once()
     auth_service._send_reset_password_email.assert_called_once_with(
         user, mock_user_token_service.create.return_value, request

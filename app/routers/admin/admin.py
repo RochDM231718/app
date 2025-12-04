@@ -10,13 +10,8 @@ public_router = APIRouter(prefix='/admin', tags=['admin'], include_in_schema=Fal
 guard_router = APIRouter(prefix='/admin', tags=['admin'], include_in_schema=False, dependencies=[Depends(auth)])
 templates = Jinja2Templates(directory='templates/admin')
 
-# Используем синглтон для глобальной функции в шаблонах
 translation_manager = TranslationManager()
 templates.env.globals['gettext'] = translation_manager.gettext
-
-
-# ИЗМЕНЕНИЕ: Удалена строка db_connection = ...
-# ИЗМЕНЕНИЕ: Удалена функция get_db(), так как она теперь импортируется
 
 @public_router.get('/')
 async def index(request: Request):

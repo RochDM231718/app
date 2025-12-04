@@ -22,7 +22,6 @@ class UserTokenService:
         })
 
     async def getResetPasswordToken(self, token: str):
-        # ИСПРАВЛЕНО: await
         user_token = await self.repo.find_by_token(token)
 
         if not user_token:

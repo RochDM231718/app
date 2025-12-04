@@ -14,8 +14,6 @@ class Users(Base):
     first_name = Column(String)
     last_name = Column(String)
 
-    # native_enum=False заставляет SQLAlchemy использовать VARCHAR вместо CREATE TYPE
-    # Это решает проблему "type ... does not exist" в asyncpg
     role = Column(SQLAlchemyEnum(UserRole, native_enum=False), default=UserRole.GUEST)
     status = Column(SQLAlchemyEnum(UserStatus, native_enum=False), default=UserStatus.PENDING)
 

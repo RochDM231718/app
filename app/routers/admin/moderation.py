@@ -30,7 +30,6 @@ def check_moderator(request: Request):
         raise HTTPException(status_code=403, detail="Access denied")
 
 
-# --- USERS ---
 @router.get('/moderation/users', response_class=HTMLResponse, name='admin.moderation.users')
 async def pending_users(request: Request, db: AsyncSession = Depends(get_db)):
     check_moderator(request)
@@ -66,12 +65,10 @@ async def reject_user(id: int, request: Request, service: UserService = Depends(
     return RedirectResponse(url=url, status_code=302)
 
 
-# --- ACHIEVEMENTS ---
 @router.get('/moderation/achievements', response_class=HTMLResponse, name='admin.moderation.achievements')
 async def pending_achievements(request: Request, db: AsyncSession = Depends(get_db)):
     check_moderator(request)
 
-    # Подгружаем пользователя, так как шаблон отображает item.user.first_name
     stmt = select(Achievement).options(selectinload(Achievement.user)).filter(
         Achievement.status == AchievementStatus.PENDING).order_by(Achievement.created_at.desc())
     result = await db.execute(stmt)

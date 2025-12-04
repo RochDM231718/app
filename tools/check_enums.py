@@ -2,10 +2,8 @@ import sys
 import os
 from dotenv import load_dotenv
 
-# Добавляем текущую папку в путь поиска модулей
 sys.path.append(os.getcwd())
 
-# Загружаем настройки из .env
 load_dotenv()
 
 from sqlalchemy import text
@@ -17,15 +15,14 @@ def check():
     try:
         db = get_database_connection().get_session()
 
-        # Проверяем значения
         sql = "SELECT enum_range(NULL::userstatus)"
         result = db.execute(text(sql)).scalar()
         print(f"Current values in 'userstatus' enum: {result}")
 
         if 'rejected' in result and 'deleted' in result:
-            print("✅ SUCCESS: Database has the new values.")
+            print("SUCCESS: Database has the new values.")
         else:
-            print("❌ MISSING: 'rejected' or 'deleted' is missing.")
+            print("MISSING: 'rejected' or 'deleted' is missing.")
 
         db.close()
     except Exception as e:

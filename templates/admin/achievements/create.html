@@ -84,7 +84,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
 <script>
-    // ВАЖНО: Ждем события load, чтобы все библиотеки точно загрузились
     window.addEventListener('load', function() {
 
         const fileInput = document.getElementById('file');
@@ -98,11 +97,8 @@
         let cropper;
         let cropOffcanvas;
 
-        // 1. Инициализация Offcanvas
-        // Перемещаем меню в конец body
         document.body.appendChild(offcanvasEl);
 
-        // Теперь window.bootstrap точно должен быть доступен
         if (typeof window.bootstrap !== 'undefined') {
             cropOffcanvas = new window.bootstrap.Offcanvas(offcanvasEl);
         } else {
@@ -111,7 +107,6 @@
             return;
         }
 
-        // 2. Настройка Cropper при открытии меню
         offcanvasEl.addEventListener('shown.bs.offcanvas', function () {
             if (cropper) { cropper.destroy(); }
 
@@ -131,7 +126,6 @@
             });
         });
 
-        // 3. Обработка выбора файла
         fileInput.addEventListener('change', function(e) {
             const files = e.target.files;
 
@@ -155,7 +149,6 @@
             }
         });
 
-        // 4. Кнопка "Обрезать"
         cropBtn.addEventListener('click', function() {
             if (!cropper) return;
 
@@ -179,7 +172,6 @@
             }, 'image/png');
         });
 
-        // Глобальная функция отмены
         window.cancelCrop = function() {
             fileInput.value = '';
             fileText.value = "{{ gettext('admin.no_file_chosen') }}";

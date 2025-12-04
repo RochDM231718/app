@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .base import AbstractRepository
-from enum import Enum  # <-- Добавляем импорт
+from enum import Enum
 
 
 class CrudRepository(AbstractRepository):

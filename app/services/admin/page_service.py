@@ -20,7 +20,6 @@ class PageService(BaseCrudService[Page, PageCreate, PageUpdate]):
         base_slug = slugify(title)
         slug = base_slug
         counter = 1
-        # ИСПРАВЛЕНО: await
         while await self.repository.is_slug_exists(slug):
             slug = f"{base_slug}-{counter}"
             counter += 1

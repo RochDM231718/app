@@ -180,7 +180,6 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Данные графика от сервера
         const chartData = {{ chart_data | tojson if chart_data else 'null' }};
 
         if (chartData) {

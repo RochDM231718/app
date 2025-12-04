@@ -33,7 +33,6 @@ class UserRepository(CrudRepository):
             if 'email' in filters and filters['email']:
                 stmt = stmt.filter(self.model.email == filters['email'])
 
-        # --- СОРТИРОВКА ---
         if hasattr(self.model, sort_by):
             sort_attr = getattr(self.model, sort_by)
             if sort_order == 'asc':
@@ -43,14 +42,12 @@ class UserRepository(CrudRepository):
         else:
             stmt = stmt.order_by(desc(self.model.id))
 
-        # Пагинация (метод из родительского класса)
         stmt = self.paginate(stmt, filters)
 
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
     async def create(self, obj_in):
-        # Если пришел Pydantic объект UserCreate
         if isinstance(obj_in, UserCreate):
             user_data = obj_in.model_dump(exclude={"password"})
         elif isinstance(obj_in, dict):

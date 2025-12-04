@@ -15,7 +15,6 @@ import os
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Инициализацию mailer можно оставить глобальной
 mailer = MailBridge(provider='smtp',
                     host=os.getenv('MAIL_HOST'),
                     port=os.getenv('MAIL_PORT'),
@@ -31,7 +30,6 @@ class AuthService:
         self.db = db
 
     async def authenticate(self, email: str, password: str, role: str):
-        # Асинхронный запрос
         stmt = select(Users).where(Users.email == email)
         result = await self.db.execute(stmt)
         user = result.scalars().first()
@@ -111,9 +109,7 @@ class AuthService:
             return False
 
         user_token_data = UserTokenCreate(user_id=user.id, type=UserTokenType.RESET_PASSWORD)
-        # Передаем асинхронную сессию в репозиторий
         user_token_service = UserTokenService(UserTokenRepository(self.db))
-        # Важно: если create в UserTokenService стал async, тут нужен await
         user_token = await user_token_service.create(data=user_token_data)
 
         self._send_reset_password_email(user, user_token, request)

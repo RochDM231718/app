@@ -1,10 +1,4 @@
-"""update schema v1
 
-Revision ID: update_schema_v1
-Revises: 620951dcc34a
-Create Date: 2023-10-27 12:00:00.000000
-
-"""
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql

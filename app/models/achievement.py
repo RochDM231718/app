@@ -14,7 +14,6 @@ class Achievement(Base):
     description = Column(String)
     file_path = Column(String)
 
-    # native_enum=False исправляет ошибку типов в asyncpg
     status = Column(SQLAlchemyEnum(AchievementStatus, native_enum=False), default=AchievementStatus.PENDING)
 
     rejection_reason = Column(String, nullable=True)

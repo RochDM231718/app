@@ -7,13 +7,11 @@ Base = declarative_base()
 
 class Database:
     def __init__(self):
-        # Получаем URL и меняем драйвер на асинхронный
-        # Например: postgresql:// -> postgresql+asyncpg://
         self.database_url = self._get_db_url()
 
         self.engine = create_async_engine(
             self.database_url,
-            echo=True,  # Полезно для отладки
+            echo=True,
             future=True
         )
 
@@ -33,10 +31,8 @@ class Database:
         port = os.getenv("DB_PORT", "5432")
 
         if driver == "postgres":
-            # ВАЖНО: добавляем +asyncpg
             return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{name}"
         elif driver == "sqlite":
-            # Для SQLite нужен aiosqlite
             return f"sqlite+aiosqlite:///{name}"
 
         raise ValueError("Driver not supported for async example")
@@ -45,11 +41,9 @@ class Database:
         return self.session_factory
 
 
-# Создаем глобальный экземпляр
 db_instance = Database()
 
 
-# Функция получения сессии для Depends()
 async def get_db():
     async with db_instance.session_factory() as session:
         yield session

@@ -8,8 +8,7 @@ from app.infrastructure.database.connection import get_db
 @router.post("/login", name='api.auth.authentication')
 async def login(email: str = Form(...), password: str = Form(...), db: AsyncSession = Depends(get_db)):
     auth_service = AuthService(db)
-    # await
-    result = await auth_service.api_authenticate(email, password, UserRole.GUEST) # или UserRole.USER
+    result = await auth_service.api_authenticate(email, password, UserRole.GUEST)
     if not result:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -19,10 +18,7 @@ async def login(email: str = Form(...), password: str = Form(...), db: AsyncSess
 
 @router.post("/refresh",  name='api.auth.refresh')
 def refresh(refresh_token: str = Form(...)):
-    # Здесь не нужен БД, только JWT, поэтому можно оставить синхронным
-    # Но если нужен доступ к БД, нужно инжектить db
-    from app.services.auth_service import AuthService as Svc # Временный импорт
-    # Метод refresh статический или не требует базы в текущей реализации
+    from app.services.auth_service import AuthService as Svc
     result = Svc(None).api_refresh_token(refresh_token)
     if not result:
         raise HTTPException(

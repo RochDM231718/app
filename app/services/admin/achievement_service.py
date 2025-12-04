@@ -35,7 +35,6 @@ class AchievementService:
         return await self.repo.create(achievement_data)
 
     async def delete(self, id: int, user_id: int, user_role: str):
-        # ИСПРАВЛЕНО: Добавлен await
         achievement = await self.repo.find(id)
 
         if not achievement:
@@ -58,7 +57,6 @@ class AchievementService:
         return False
 
     def get_all_pending(self):
-        # Этот метод, вероятно, не используется в текущих роутерах, но его тоже надо бы обновить если используется
         pass
 
     async def update_status(self, id: int, status: str, rejection_reason: str = None):

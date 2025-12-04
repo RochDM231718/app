@@ -31,7 +31,6 @@ async def search_documents(request: Request, query: str, status: Optional[str] =
     check_access(request)
     if not query: return []
 
-    # Добавляем selectinload для подгрузки пользователя
     stmt = select(Achievement).options(selectinload(Achievement.user)).join(Users)
 
     stmt = stmt.filter(or_(Achievement.title.ilike(f"%{query}%"), Users.first_name.ilike(f"%{query}%"),
@@ -51,7 +50,6 @@ async def index(request: Request, query: Optional[str] = "", status: Optional[st
                 sort: Optional[str] = "created_at", order: Optional[str] = "desc", db: AsyncSession = Depends(get_db)):
     check_access(request)
 
-    # Добавляем selectinload, чтобы doc.user был доступен в шаблоне
     stmt = select(Achievement).options(selectinload(Achievement.user)).join(Users)
 
     if query: stmt = stmt.filter(or_(Achievement.title.ilike(f"%{query}%"), Users.first_name.ilike(f"%{query}%"),
@@ -69,7 +67,6 @@ async def index(request: Request, query: Optional[str] = "", status: Optional[st
     result = await db.execute(stmt)
     documents = result.scalars().all()
 
-    # Подсчет total
     count_stmt = select(func.count()).select_from(Achievement).join(Users)
     if query: count_stmt = count_stmt.filter(
         or_(Achievement.title.ilike(f"%{query}%"), Users.first_name.ilike(f"%{query}%"),

@@ -10,7 +10,6 @@ from app.models.enums import UserRole
 translation_manager = TranslationManager()
 
 
-# ИЗМЕНЕНИЕ: Функция стала async
 async def auth(request: Request):
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
@@ -21,10 +20,8 @@ async def auth(request: Request):
     if not payload:
         raise HTTPException(status_code=401, detail=translation_manager.gettext('api.auth.invalid_token'))
 
-    # ИЗМЕНЕНИЕ: Использование асинхронной сессии
     async with db_instance.session_factory() as db:
         user_id = payload.get("sub")
-        # Асинхронный запрос
         stmt = select(Users).filter(Users.id == int(user_id))
         result = await db.execute(stmt)
         user = result.scalars().first()
