@@ -12,7 +12,9 @@ from app.routers.admin.admin import templates
 from mailbridge import MailBridge
 from app.infrastructure.jwt_handler import create_access_token, create_refresh_token, refresh_access_token
 import os
+import structlog  # Импорт логгера
 
+logger = structlog.get_logger()  # Инициализация
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 mailer = MailBridge(provider='smtp',
@@ -35,11 +37,14 @@ class AuthService:
         user = result.scalars().first()
 
         if not user:
+            logger.warning("Login failed: user not found", email=email)
             return None
 
         if not self.verify_password(password, user.hashed_password):
+            logger.warning("Login failed: wrong password", email=email)
             return None
 
+        logger.info("User logged in", user_id=user.id, email=user.email, role=user.role.value)
         return user
 
     async def api_authenticate(self, email: str, password: str, role: str = "User"):
@@ -68,6 +73,7 @@ class AuthService:
         stmt = select(Users).where(Users.email == data.email)
         result = await self.db.execute(stmt)
         if result.scalars().first():
+            logger.warning("Registration failed: email exists", email=data.email)
             return False
 
         hashed_pw = pwd_context.hash(data.password)
@@ -84,6 +90,7 @@ class AuthService:
 
         self.db.add(new_user)
         await self.db.commit()
+        logger.info("New user registered", email=data.email)
         return True
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
@@ -113,6 +120,7 @@ class AuthService:
         user_token = await user_token_service.create(data=user_token_data)
 
         self._send_reset_password_email(user, user_token, request)
+        logger.info("Password reset email sent", email=email)
 
         return True
 

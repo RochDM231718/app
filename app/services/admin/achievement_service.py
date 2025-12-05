@@ -5,12 +5,15 @@ from pathlib import Path
 import uuid
 import os
 from datetime import datetime
-import aiofiles  # Если aiofiles не установлен, можно использовать стандартный open, но лучше добавить в requirements
+import aiofiles
+import structlog  # Импорт
 
 from app.repositories.admin.achievement_repository import AchievementRepository
 from app.models.achievement import Achievement
 from app.models.enums import AchievementStatus
 from app.schemas.admin.achievements import AchievementCreate
+
+logger = structlog.get_logger()  # Инициализация
 
 
 class AchievementService:
@@ -32,7 +35,9 @@ class AchievementService:
             "created_at": datetime.now()
         }
 
-        return await self.repo.create(achievement_data)
+        ach = await self.repo.create(achievement_data)
+        logger.info("Achievement uploaded", id=ach.id, user_id=user_id, title=ach.title)
+        return ach
 
     async def delete(self, id: int, user_id: int, user_role: str):
         achievement = await self.repo.find(id)
@@ -49,15 +54,14 @@ class AchievementService:
                 if full_path.exists():
                     full_path.unlink()
             except Exception as e:
-                print(f"Error deleting file {achievement.file_path}: {e}")
+                logger.error("Error deleting file", path=achievement.file_path, error=str(e))
 
             await self.repo.delete(id)
+            logger.info("Achievement deleted", id=id, user_id=user_id)
             return True
 
+        logger.warning("Delete achievement denied", id=id, user_id=user_id)
         return False
-
-    def get_all_pending(self):
-        pass
 
     async def update_status(self, id: int, status: str, rejection_reason: str = None):
         data = {"status": status}
@@ -67,6 +71,7 @@ class AchievementService:
             data["rejection_reason"] = None
 
         await self.repo.update(id, data)
+        logger.info("Achievement status updated", id=id, status=status)
 
     async def _save_file(self, file: UploadFile) -> str:
         upload_dir = Path("static/uploads/achievements")
