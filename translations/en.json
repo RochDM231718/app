@@ -3,6 +3,9 @@
 
   "api.auth.user_not_found": "User not found",
   "api.auth.invalid_credentials": "Invalid email or password",
+  "api.auth.invalid_token": "Invalid token",
+  "api.auth.invalid_authorization_token": "Invalid authorization token",
+  "api.auth.invalid_refresh_token": "Invalid refresh token",
 
   "admin.sign_in": "Sign in",
   "admin.email": "Email address",
@@ -68,6 +71,12 @@
 
   "admin.dashboard.title": "Dashboard",
   "admin.dashboard.message": "Hi {user}, welcome to {platform}.",
+  "admin.dashboard.new_users_chart": "Registration Dynamics",
+  "admin.dashboard.docs_chart": "Documents Dynamics",
+  "admin.period.day": "Day",
+  "admin.period.week": "Week",
+  "admin.period.month": "Month",
+  "admin.period.all": "All Time",
 
   "admin.users.title": "Users",
   "admin.users.search": "Search users...",

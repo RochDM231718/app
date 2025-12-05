@@ -1,7 +1,18 @@
 {% extends 'layout.html' %}
 {% set title = gettext('admin.dashboard.title') %}
 {% block content %}
-    <h2 class="card-title mb-4">{{ title }}</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="card-title mb-0">{{ title }}</h2>
+
+        {% if request.session.get('auth_role') in ['moderator', 'super_admin'] %}
+        <div class="btn-group shadow-sm" role="group" aria-label="Chart period">
+          <a href="?period=day" class="btn btn-sm btn-outline-primary bg-white {% if current_period == 'day' %}active{% endif %}">{{ gettext('admin.period.day') }}</a>
+          <a href="?period=week" class="btn btn-sm btn-outline-primary bg-white {% if current_period == 'week' or not current_period %}active{% endif %}">{{ gettext('admin.period.week') }}</a>
+          <a href="?period=month" class="btn btn-sm btn-outline-primary bg-white {% if current_period == 'month' %}active{% endif %}">{{ gettext('admin.period.month') }}</a>
+          <a href="?period=all" class="btn btn-sm btn-outline-primary bg-white {% if current_period == 'all' %}active{% endif %}">{{ gettext('admin.period.all') }}</a>
+        </div>
+        {% endif %}
+    </div>
 
     <div class="alert alert-light border shadow-sm mb-4" role="alert">
         {{ gettext('admin.dashboard.message', {'user': request.session['auth_name'], 'platform': request.state.app_name}) }}
@@ -9,12 +20,24 @@
 
     <div class="row">
         {% if request.session.get('auth_role') in ['moderator', 'super_admin'] %}
-            <div class="col-12 mb-4">
-                <div class="card shadow-sm border-0">
+
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-0 h-100">
                     <div class="card-body">
-                        <h5 class="card-title text-muted mb-3">Динамика новых пользователей (7 дней)</h5>
-                        <div style="height: 300px;">
-                            <canvas id="registrationsChart"></canvas>
+                        <h5 class="card-title text-muted mb-3">{{ gettext('admin.dashboard.new_users_chart') }}</h5>
+                        <div style="height: 250px;">
+                            <canvas id="usersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <h5 class="card-title text-muted mb-3">{{ gettext('admin.dashboard.docs_chart') }}</h5>
+                        <div style="height: 250px;">
+                            <canvas id="docsChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -180,17 +203,18 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const chartData = {{ chart_data | tojson if chart_data else 'null' }};
+        const usersData = {{ users_chart | tojson if users_chart else 'null' }};
+        const docsData = {{ docs_chart | tojson if docs_chart else 'null' }};
 
-        if (chartData) {
-            const ctx = document.getElementById('registrationsChart').getContext('2d');
-            new Chart(ctx, {
+        // Конфигурация для графика пользователей
+        if (usersData) {
+            new Chart(document.getElementById('usersChart').getContext('2d'), {
                 type: 'line',
                 data: {
-                    labels: chartData.labels,
+                    labels: usersData.labels,
                     datasets: [{
-                        label: 'Новые регистрации',
-                        data: chartData.data,
+                        label: '{{ gettext("admin.dashboard.new_users_chart") }}',
+                        data: usersData.data,
                         borderColor: '#4d008c',
                         backgroundColor: 'rgba(77, 0, 140, 0.1)',
                         borderWidth: 2,
@@ -201,12 +225,31 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0 } }
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        }
+
+        // Конфигурация для графика документов
+        if (docsData) {
+            new Chart(document.getElementById('docsChart').getContext('2d'), {
+                type: 'bar', // Для документов используем столбчатую диаграмму
+                data: {
+                    labels: docsData.labels,
+                    datasets: [{
+                        label: '{{ gettext("admin.dashboard.docs_chart") }}',
+                        data: docsData.data,
+                        backgroundColor: 'rgba(13, 202, 240, 0.6)', // Голубой
+                        borderColor: '#0dcaf0',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
                 }
             });
         }

@@ -3,6 +3,9 @@
 
   "api.auth.user_not_found": "Пользователь не найден",
   "api.auth.invalid_credentials": "Неправильная почта или пароль",
+  "api.auth.invalid_token": "Неверный токен",
+  "api.auth.invalid_authorization_token": "Неверный токен авторизации",
+  "api.auth.invalid_refresh_token": "Неверный токен обновления",
 
   "admin.sign_in": "Вход",
   "admin.email": "Email адрес",
@@ -68,6 +71,12 @@
 
   "admin.dashboard.title": "Дашборд",
   "admin.dashboard.message": "Привет, {user}! Добро пожаловать в {platform}.",
+  "admin.dashboard.new_users_chart": "Динамика регистрации",
+  "admin.dashboard.docs_chart": "Динамика загрузки документов",
+  "admin.period.day": "День",
+  "admin.period.week": "Неделя",
+  "admin.period.month": "Месяц",
+  "admin.period.all": "Всё время",
 
   "admin.users.title": "Пользователи",
   "admin.users.search": "Поиск пользователей...",
