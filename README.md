@@ -34,7 +34,7 @@
 
 ### **1\. Клонирование репозитория**
 
-git clone https://github.com/RochDM231718/app.git/asyn  
+git clone https://github.com/RochDM231718/app.git/asyn 
 
 ### **2\. Настройка окружения**
 
