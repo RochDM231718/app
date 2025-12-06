@@ -5,12 +5,16 @@ import os
 import gzip
 import shutil
 import hashlib
-from logging.handlers import TimedRotatingFileHandler
+import queue
+import atexit
+from logging.handlers import TimedRotatingFileHandler, QueueHandler, QueueListener
 from structlog.types import Processor
 
 
+# --- ФУНКЦИИ ХЭШИРОВАНИЯ И РОТАЦИИ ---
+
 def calculate_sha256(file_path: str) -> str:
-    """Вычисляет SHA256 хэш файла (для целостности)."""
+    """Вычисляет SHA256 хэш файла для защиты целостности."""
     sha256 = hashlib.sha256()
     with open(file_path, 'rb') as f:
         while chunk := f.read(8192):
@@ -20,39 +24,33 @@ def calculate_sha256(file_path: str) -> str:
 
 def archive_and_hash_rotator(source: str, dest: str):
     """
-    Кастомный ротатор для логов:
-    1. Сжимает старый лог в .gz
-    2. Считает хэш архива и сохраняет в .sha256
-    3. Удаляет исходный незащищенный файл
+    Ротатор: сжимает лог в .gz, считает хэш и удаляет оригинал.
     """
     dest_gz = dest + ".gz"
-
-    # 1. Сжимаем файл
     try:
         with open(source, 'rb') as f_in:
             with gzip.open(dest_gz, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
-        # 2. Вычисляем хэш созданного архива
         file_hash = calculate_sha256(dest_gz)
 
-        # 3. Сохраняем хэш
         with open(dest_gz + ".sha256", "w") as f_hash:
             f_hash.write(file_hash)
 
-        # 4. Удаляем исходный файл (если сжатие прошло успешно)
         if os.path.exists(source):
             os.remove(source)
-
     except Exception as e:
-        # Если ошибка, пишем в stderr, чтобы не потерять инфо
         sys.stderr.write(f"Error rotating logs: {e}\n")
 
 
+# --- НАСТРОЙКА ЛОГГЕРА ---
+
 def setup_logging(json_logs: bool = False, log_level: str = "INFO", log_file: str = "app.log"):
     """
-    Настройка логгера с поддержкой ротации и хэширования.
+    Настраивает асинхронное (буферизированное) логирование с ротацией и хэшированием.
     """
+
+    # 1. Процессоры Structlog
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
@@ -73,7 +71,10 @@ def setup_logging(json_logs: bool = False, log_level: str = "INFO", log_file: st
         cache_logger_on_first_use=True,
     )
 
-    # --- Консоль ---
+    # 2. Создаем "реальные" хендлеры (Консоль + Файл)
+    handlers = []
+
+    # А. Консольный хендлер (Цветной или JSON)
     if json_logs:
         console_renderer = structlog.processors.JSONRenderer()
     else:
@@ -86,20 +87,12 @@ def setup_logging(json_logs: bool = False, log_level: str = "INFO", log_file: st
             console_renderer,
         ],
     )
-
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(console_formatter)
+    handlers.append(console_handler)
 
-    # --- Файл с ротацией и хэшированием ---
-    root_logger = logging.getLogger()
-    root_logger.handlers = []
-    root_logger.setLevel(log_level.upper())
-    root_logger.addHandler(console_handler)
-
+    # Б. Файловый хендлер (Ротация + Хэширование)
     if log_file:
-        # Используем TimedRotatingFileHandler
-        # when="midnight" — ротация каждую ночь в 00:00
-        # backupCount=30 — хранить логи за 30 дней
         file_handler = TimedRotatingFileHandler(
             log_file,
             when="midnight",
@@ -107,12 +100,10 @@ def setup_logging(json_logs: bool = False, log_level: str = "INFO", log_file: st
             backupCount=30,
             encoding="utf-8"
         )
-
-        # Подключаем наш кастомный ротатор
         file_handler.rotator = archive_and_hash_rotator
-        # namer нужен, чтобы правильно сформировать имя перед передачей в rotator
         file_handler.namer = lambda name: name
 
+        # В файл пишем без цветов, но структурно
         if json_logs:
             file_renderer = structlog.processors.JSONRenderer()
         else:
@@ -125,9 +116,31 @@ def setup_logging(json_logs: bool = False, log_level: str = "INFO", log_file: st
                 file_renderer,
             ],
         )
-
         file_handler.setFormatter(file_formatter)
-        root_logger.addHandler(file_handler)
+        handlers.append(file_handler)
+
+    # 3. Настраиваем КЭШИРОВАНИЕ (QueueListener)
+    # Создаем очередь для логов
+    log_queue = queue.Queue(-1)
+
+    # QueueHandler - это то, что мы добавим в логгер. Он просто кидает лог в очередь.
+    queue_handler = QueueHandler(log_queue)
+
+    # QueueListener - это отдельный поток, который забирает из очереди и пишет в реальные хендлеры
+    listener = QueueListener(log_queue, *handlers, respect_handler_level=True)
+    listener.start()
+
+    # Останавливаем слушатель при выходе из приложения
+    atexit.register(listener.stop)
+
+    # 4. Настраиваем корневой логгер
+    root_logger = logging.getLogger()
+    root_logger.handlers = []  # Удаляем старые
+    root_logger.setLevel(log_level.upper())
+
+    # Добавляем только QueueHandler!
+    # Приложение -> QueueHandler -> Queue -> [QueueListener Thread] -> Console/File
+    root_logger.addHandler(queue_handler)
 
     # Перехват логов Uvicorn
     for _log in ["uvicorn", "uvicorn.error", "uvicorn.access"]:

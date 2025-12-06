@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, UTC
-from jose import  jwt, JWTError
+from jose import jwt, JWTError
 from typing import Optional, Dict
 from dotenv import load_dotenv
 import os
@@ -8,8 +8,15 @@ load_dotenv()
 
 ALGORITHM = "HS256"
 
-SECRET_KEY = os.getenv("API_SECRET_KEY", "fastkit-secretkey")
-REFRESH_SECRET_KEY = os.getenv("API_REFRESH_SECRET_KEY", "astkit-refresh-secretkey")
+# SECURITY FIX: Enforce environment variables
+SECRET_KEY = os.getenv("API_SECRET_KEY")
+REFRESH_SECRET_KEY = os.getenv("API_REFRESH_SECRET_KEY")
+
+if not SECRET_KEY:
+    raise ValueError("CRITICAL SECURITY ERROR: API_SECRET_KEY is not set in environment variables!")
+if not REFRESH_SECRET_KEY:
+    raise ValueError("CRITICAL SECURITY ERROR: API_REFRESH_SECRET_KEY is not set in environment variables!")
+
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("API_ACCESS_TOKEN_EXPIRE_MINUTES", 60))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("API_REFRESH_TOKEN_EXPIRE_DAYS", 7))
 

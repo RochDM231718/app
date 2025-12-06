@@ -15,14 +15,8 @@ from app.routers.admin.achievements import router as admin_achievements_router
 from app.routers.admin.moderation import router as admin_moderation_router
 
 from app.middlewares.admin_middleware import GlobalContextMiddleware
-from app.middlewares.api_auth_middleware import auth as api_auth
-from app.middlewares.logging_middleware import LoggingMiddleware
-from app.infrastructure.logger import setup_logging
-from app.routers.api.auth import router as api_auth_router
 from app.infrastructure.tranaslations import TranslationManager
-
-# Настраиваем логгер: выключили JSON (для удобства глаз), пишем в файл app.log
-setup_logging(json_logs=False, log_level="INFO", log_file="app.log")
+from app.routers.api.auth import router as api_auth_router
 
 app = FastAPI()
 
@@ -37,16 +31,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(LoggingMiddleware)
 app.add_middleware(GlobalContextMiddleware)
-app.add_middleware(SessionMiddleware, secret_key=os.getenv('ADMIN_SECRET_KEY', 'secret'))
 
-# --- ФИКС FAVICON ---
+# SECURITY FIX: Ensure ADMIN_SECRET_KEY is loaded
+admin_secret = os.getenv('ADMIN_SECRET_KEY')
+if not admin_secret:
+    raise ValueError("CRITICAL SECURITY ERROR: ADMIN_SECRET_KEY is not set in environment variables!")
+
+app.add_middleware(SessionMiddleware, secret_key=admin_secret)
+
+# --- FAVICON FIX ---
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return Response(status_code=204)
 
-# --- ПОДКЛЮЧЕНИЕ РОУТЕРОВ ---
+# --- ROUTERS ---
 app.include_router(admin_common_router)
 app.include_router(admin_auth_router)
 app.include_router(admin_dashboard_router)
@@ -57,10 +56,10 @@ app.include_router(admin_moderation_router)
 
 app.include_router(api_auth_router)
 
-# --- СТАТИКА ---
+# --- STATIC FILES ---
 app.mount("/static", CustomStaticFiles(directory="static"), name="static")
 
-# --- ГЛАВНАЯ СТРАНИЦА ---
+# --- HOME ---
 @app.get('/')
 async def welcome():
     return RedirectResponse(url="/admin/login")
