@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="{{ url_for('static', path='assets/css/font-awesome.min.css') }}" rel="stylesheet"/>
+    <link href="{{ url_for('static', path='assets/css/style.css') }}" rel="stylesheet"/>
+
+    <style>
+        .sidebar {
+            width: 300px;
+            min-height: 100vh;
+            transition: width 0.3s ease, padding 0.3s ease;
+        }
+        .main-content { margin-left: 300px; transition: margin-left 0.3s; }
+
+        .sidebar-content {
+            padding-left: 1rem !important;
+            padding-right: 0 !important;
+            padding-top: 1.5rem !important;
+        }
+
+        .btn-sidebar {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            border-radius: 10px 0 0 10px !important;
+            margin-bottom: 6px !important;
+            border: 1px solid transparent;
+            border-right: none !important;
+            transition: all 0.2s;
+            padding: 10px 50px 10px 15px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: rgba(255, 255, 255, 0.85) !important;
+        }
+
+        .btn-sidebar:hover { background-color: rgba(255, 255, 255, 0.1) !important; color: #fff !important; }
+        .btn-sidebar.active { background-color: var(--brand-purple) !important; color: #fff !important; box-shadow: -2px 2px 5px rgba(0,0,0,0.1); }
+
+        .nav-badge {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            margin: 0 !important;
+            z-index: 2;
+        }
+
+        /* --- СВЕРНУТЫЙ РЕЖИМ --- */
+        body.sidebar-collapsed .sidebar { width: 70px; }
+        body.sidebar-collapsed .main-content { margin-left: 70px; }
+        body.sidebar-collapsed .sidebar-content { padding-left: 0 !important; padding-right: 0 !important; }
+        body.sidebar-collapsed .nav-label { display: none !important; }
+        body.sidebar-collapsed .btn-sidebar { justify-content: center !important; padding: 12px 0 !important; width: 100%; border-radius: 0 !important; }
+
+        body.sidebar-collapsed .nav-badge {
+            top: 2px; right: 2px; transform: none; font-size: 0.6rem; padding: 3px 5px; min-width: 18px; height: 18px;
+            display: flex; align-items: center; justify-content: center; border: 2px solid var(--brand-turquoise, #009ea2);
+        }
+
+        .sidebar-toggle-btn { cursor: pointer; border: none; background: transparent; padding: 0.5rem; margin-right: 1rem; color: var(--brand-purple) !important; transition: color 0.3s; }
+        body.dark-mode .sidebar-toggle-btn { color: var(--brand-purple) !important; }
+        .navbar-brand, .navbar-nav .nav-link { color: var(--brand-purple) !important; }
+        body.dark-mode .navbar-brand, body.dark-mode .navbar-nav .nav-link { color: var(--brand-purple) !important; }
+        body.dark-mode .sidebar { background-color: #1e1e1e; border-right: 1px solid #333; }
+        body.dark-mode .btn-sidebar { color: #e0e0e0 !important; }
+        body.dark-mode .btn-sidebar:hover { background-color: rgba(255, 255, 255, 0.05) !important; }
+        body.dark-mode.sidebar-collapsed .nav-badge { border-color: #1e1e1e; }
+    </style>
+</head>
+<body>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>
+
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top border-bottom transition-colors">
+        <div class="container-fluid">
+            <div class="d-flex align-items-center">
+                <button id="sidebarToggle" type="button" class="sidebar-toggle-btn">
+                    <i class="fa fa-bars fa-lg"></i>
+                </button>
+                <a class="navbar-brand fw-bold m-0" href="#">
+                    <i class="fa fa-graduation-cap" style="color: var(--brand-purple) !important;"></i>
+                    <span class="d-none d-sm-inline ms-2" style="color: var(--brand-purple) !important;">{{ request.state.app_name }}</span>
+                </a>
+            </div>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-cog fa-lg" aria-hidden="true"></i> {{ gettext('admin.menu.settings') }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="navbarDropdown" style="min-width: 220px;">
+                            <li><h6 class="dropdown-header text-uppercase small fw-bold">Language / Язык</h6></li>
+                            <li>
+                                <div class="d-flex justify-content-around px-3 pb-2">
+                                    <a href="{{ url_for('admin.set_language', locale='en') }}" class="btn btn-sm {% if request.session.get('locale') == 'en' or not request.session.get('locale') %}btn-primary{% else %}btn-outline-secondary{% endif %}">EN</a>
+                                    <a href="{{ url_for('admin.set_language', locale='ru') }}" class="btn btn-sm {% if request.session.get('locale') == 'ru' %}btn-primary{% else %}btn-outline-secondary{% endif %}">RU</a>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header text-uppercase small fw-bold">Appearance</h6></li>
+                            <li>
+                                <div class="dropdown-item d-flex justify-content-between align-items-center" onclick="event.stopPropagation();">
+                                    <span><i class="fa fa-moon-o me-2"></i> Dark Mode</span>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input" type="checkbox" id="darkModeSwitch" style="cursor: pointer;">
+                                    </div>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('admin.auth.logout') }}">
+                                <i class="fa fa-sign-out me-2"></i> {{ gettext('admin.menu.sing_out') }}
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav id="sidebarMenu" class="sidebar">
+                <div class="position-sticky sidebar-content">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link btn-sidebar {% if request.url.path == url_for('admin.users.edit', id=request.session['auth_id']).path %}active{% endif %}"
+                               href="{{ url_for('admin.users.edit', id=request.session['auth_id']) }}" title="{{ gettext('admin.menu.profile') }}">
+                                <i class="fa fa-user-circle-o me-2" aria-hidden="true"></i>
+                                <span class="nav-label">{{ gettext('admin.menu.profile') }}</span>
+                            </a>
+                        </li>
+                        <hr style="border-top: 1px solid rgba(255,255,255,0.2);">
+                        <li class="nav-item">
+                            <a class="nav-link btn-sidebar {% if request.url.path == url_for('admin.dashboard').path %}active{% endif %}"
+                               aria-current="page" href="{{ url_for('admin.dashboard') }}" title="{{ gettext('admin.menu.dashboard')}}">
+                                <i class="fa fa-tachometer me-2" aria-hidden="true"></i>
+                                <span class="nav-label">{{ gettext('admin.menu.dashboard')}}</span>
+                            </a>
+                        </li>
+                        {% if request.session.get('auth_role') in ['moderator', 'super_admin'] %}
+                        <li class="nav-item">
+                            <a class="nav-link btn-sidebar {% if request.url.path.startswith(url_for('admin.users.index').path) and request.url.path != url_for('admin.users.edit', id=request.session['auth_id']).path %}active{% endif %}"
+                               href="{{ url_for('admin.users.index') }}" title="{{ gettext('admin.menu.users')}}">
+                                <i class="fa fa-users me-2" aria-hidden="true"></i>
+                                <span class="nav-label">{{ gettext('admin.menu.users')}}</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if request.session.get('auth_role') in ['student', 'super_admin'] %}
+                        <h6 class="sidebar-heading px-3 mt-4 mb-2"><span class="nav-label">{{ gettext('admin.menu.student_zone') }}</span></h6>
+                        <li class="nav-item">
+                            <a class="nav-link btn-sidebar {% if request.url.path.startswith(url_for('admin.achievements.index').path) %}active{% endif %}"
+                               href="{{ url_for('admin.achievements.index') }}" title="{{ gettext('admin.menu.my_achievements') }}">
+                                <i class="fa fa-trophy me-2" aria-hidden="true"></i>
+                                <span class="nav-label">{{ gettext('admin.menu.my_achievements') }}</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if request.session.get('auth_role') in ['moderator', 'super_admin'] %}
+                        <h6 class="sidebar-heading px-3 mt-4 mb-2"><span class="nav-label">{{ gettext('admin.menu.moderation') }}</span></h6>
+                        <li class="nav-item">
+                            <a class="nav-link btn-sidebar {% if request.url.path.startswith(url_for('admin.moderation.users').path) %}active{% endif %}"
+                               href="{{ url_for('admin.moderation.users') }}" title="{{ gettext('admin.menu.pending_users') }}">
+                                <i class="fa fa-user-plus me-2" aria-hidden="true"></i>
+                                <span class="nav-label ms-2">{{ gettext('admin.menu.pending_users') }}</span>
+                                {% if request.state.pending_users_count > 0 %}
+                                    <span class="badge bg-white text-dark rounded-pill nav-badge">{{ request.state.pending_users_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link btn-sidebar {% if request.url.path.startswith(url_for('admin.moderation.achievements').path) %}active{% endif %}"
+                               href="{{ url_for('admin.moderation.achievements') }}" title="{{ gettext('admin.menu.review_docs') }}">
+                                <i class="fa fa-check-square-o me-2" aria-hidden="true"></i>
+                                <span class="nav-label ms-2">{{ gettext('admin.menu.review_docs') }}</span>
+                                {% if request.state.pending_achievements_count > 0 %}
+                                    <span class="badge bg-white text-dark rounded-pill nav-badge">{{ request.state.pending_achievements_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link btn-sidebar {% if request.url.path.startswith(url_for('admin.pages.index').path) %}active{% endif %}"
+                               href="{{ url_for('admin.pages.index') }}" title="{{ gettext('admin.menu.all_documents') }}">
+                                <i class="fa fa-files-o me-2" aria-hidden="true"></i>
+                                <span class="nav-label">{{ gettext('admin.menu.all_documents') }}</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </nav>
+            <main class="main-content p-4">
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card p-4 shadow-sm border-0" style="border-radius: 12px;">
+                            <div class="card-body">
+                                   {% block content %}{% endblock %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="actionConfirmationSidebar" aria-labelledby="actionConfirmationLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="actionConfirmationLabel">{{ gettext('admin.confirmation.title') }}</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column">
+            <div class="mb-4">
+                <div id="action-icon" class="text-center mb-3 text-warning">
+                    <i class="fa fa-exclamation-triangle fa-4x"></i>
+                </div>
+                <p class="text-center fs-5" id="action-message">
+                    {{ gettext('admin.confirmation.message_default') }}
+                </p>
+                <p class="text-center text-muted small" id="action-subtext">
+                    {{ gettext('admin.confirmation.cannot_undo') }}
+                </p>
+            </div>
+
+            <div class="mt-auto">
+                <form id="action-confirm-form" method="POST" action="">
+                    <button type="submit" id="action-confirm-btn" class="btn btn-danger w-100 mb-2">
+                        {{ gettext('admin.confirm') }}
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="offcanvas">
+                        {{ gettext('admin.cancel') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function showToast(message, type = 'info') {
+            const container = document.querySelector('.toast-container');
+            const toastId = 'toast-' + Date.now();
+            let bgClass = 'bg-primary';
+            let icon = 'fa-info-circle';
+            if (type === 'success') { bgClass = 'bg-success'; icon = 'fa-check-circle'; }
+            if (type === 'error' || type === 'danger') { bgClass = 'bg-danger'; icon = 'fa-exclamation-circle'; }
+            if (type === 'warning') { bgClass = 'bg-warning text-dark'; icon = 'fa-exclamation-triangle'; }
+
+            const html = `
+                <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body fs-6 d-flex align-items-center">
+                            <i class="fa ${icon} me-2 fa-lg"></i> ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            const toastEl = document.getElementById(toastId);
+            // Используем window.bootstrap, чтобы точно знать, что библиотека загружена
+            const toast = new window.bootstrap.Toast(toastEl, { delay: 4000 });
+            toast.show();
+            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+        }
+
+        function openConfirmation(url, title, message, btnClass = 'btn-danger', btnText = 'Confirm') {
+            document.getElementById('action-confirm-form').action = url;
+
+            if(title) document.getElementById('actionConfirmationLabel').innerText = title;
+            if(message) document.getElementById('action-message').innerText = message;
+
+            const btn = document.getElementById('action-confirm-btn');
+            btn.className = `btn ${btnClass} w-100 mb-2`;
+            if(btnText) btn.innerText = btnText;
+
+            const iconDiv = document.getElementById('action-icon');
+            if (btnClass.includes('danger')) {
+                iconDiv.className = 'text-center mb-3 text-danger';
+                iconDiv.innerHTML = '<i class="fa fa-trash-o fa-4x"></i>';
+            } else if (btnClass.includes('success')) {
+                iconDiv.className = 'text-center mb-3 text-success';
+                iconDiv.innerHTML = '<i class="fa fa-check-circle-o fa-4x"></i>';
+            } else {
+                iconDiv.className = 'text-center mb-3 text-primary';
+                iconDiv.innerHTML = '<i class="fa fa-question-circle-o fa-4x"></i>';
+            }
+
+            const sidebarEl = document.getElementById('actionConfirmationSidebar');
+            const sidebar = new window.bootstrap.Offcanvas(sidebarEl);
+            sidebar.show();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('toast_msg')) {
+                const type = urlParams.get('toast_type') || 'info';
+                showToast(urlParams.get('toast_msg'), type);
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+
+            const toggleSwitch = document.querySelector('#darkModeSwitch');
+            const body = document.body;
+            if (localStorage.getItem('theme') === 'dark') { body.classList.add('dark-mode'); if(toggleSwitch) toggleSwitch.checked = true; }
+            if(toggleSwitch) {
+                toggleSwitch.addEventListener('change', () => {
+                    if (toggleSwitch.checked) { body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); showToast("{{ gettext('admin.theme.dark') }}", 'success'); }
+                    else { body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); showToast("{{ gettext('admin.theme.light') }}", 'success'); }
+                });
+            }
+            const sidebarToggle = document.querySelector('#sidebarToggle');
+            if (localStorage.getItem('sidebar') === 'collapsed') { body.classList.add('sidebar-collapsed'); }
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    body.classList.toggle('sidebar-collapsed');
+                    if (body.classList.contains('sidebar-collapsed')) { localStorage.setItem('sidebar', 'collapsed'); }
+                    else { localStorage.setItem('sidebar', 'expanded'); }
+                });
+            }
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

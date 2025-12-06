@@ -1,0 +1,186 @@
+{% extends 'layout.html' %}
+{% set title = gettext('admin.achievements.upload_title') %}
+
+{% block content %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">{{ gettext('admin.achievements.upload_title') }}</h5>
+            </div>
+            <div class="card-body">
+                {% if error_msg %}
+                    <div class="alert alert-danger">{{ error_msg }}</div>
+                {% endif %}
+
+                <form id="uploadForm" method="post" action="{{ url_for('admin.achievements.store') }}" enctype="multipart/form-data">
+
+                    <div class="mb-3">
+                        <label for="title" class="form-label">{{ gettext('admin.achievements.doc_title') }} <span class="text-danger">*</span></label>
+                        <input type="text" name="title" class="form-control" id="title" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">{{ gettext('admin.achievements.description') }}</label>
+                        <textarea name="description" class="form-control" id="description" rows="3" placeholder="{{ gettext('admin.achievements.description_placeholder') }}"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="file" class="form-label">{{ gettext('admin.achievements.file') }} <span class="text-danger">*</span></label>
+
+                         <div class="input-group">
+                            <label class="input-group-text btn btn-outline-secondary" for="file">
+                                {{ gettext('admin.choose_file') }}
+                            </label>
+                            <input type="file" name="file" class="form-control d-none" id="file" required accept="image/*">
+                            <input type="text" class="form-control bg-white" id="file-text" value="{{ gettext('admin.no_file_chosen') }}" readonly onclick="document.getElementById('file').click()">
+                         </div>
+                        <div class="form-text">{{ gettext('admin.achievements.file_help') }}</div>
+
+                        <div id="cropped-preview-container" class="mt-3" style="display: none;">
+                            <p class="small text-muted mb-1">Готово к загрузке:</p>
+                            <img id="cropped-result" class="img-thumbnail" style="max-height: 200px;">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin.achievements.index') }}" class="btn btn-light">{{ gettext('admin.cancel') }}</a>
+                        <button type="submit" class="btn btn-success">{{ gettext('admin.upload') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="cropOffcanvas" data-bs-backdrop="static" style="width: 90%; max-width: 800px; z-index: 1055;">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title">Редактирование</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close" onclick="cancelCrop()"></button>
+    </div>
+
+    <div class="offcanvas-body p-0 d-flex flex-column bg-dark">
+        <div class="img-container flex-grow-1 d-flex align-items-center justify-content-center overflow-hidden" style="max-height: 80vh;">
+            <img id="image-to-crop" src="" style="display: block; max-width: 100%;">
+        </div>
+
+        <div class="p-3 bg-white border-top mt-auto">
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-primary" id="crop-btn">
+                    <i class="fa fa-check me-2"></i> Обрезать и Сохранить
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="offcanvas" onclick="cancelCrop()">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+    window.addEventListener('load', function() {
+
+        const fileInput = document.getElementById('file');
+        const fileText = document.getElementById('file-text');
+        const imageToCrop = document.getElementById('image-to-crop');
+        const cropBtn = document.getElementById('crop-btn');
+        const croppedPreviewContainer = document.getElementById('cropped-preview-container');
+        const croppedResult = document.getElementById('cropped-result');
+        const offcanvasEl = document.getElementById('cropOffcanvas');
+
+        let cropper;
+        let cropOffcanvas;
+
+        document.body.appendChild(offcanvasEl);
+
+        if (typeof window.bootstrap !== 'undefined') {
+            cropOffcanvas = new window.bootstrap.Offcanvas(offcanvasEl);
+        } else {
+            console.error('CRITICAL: Bootstrap JS not found even after window.load');
+            alert('Ошибка: Не удалось загрузить интерфейс. Обновите страницу.');
+            return;
+        }
+
+        offcanvasEl.addEventListener('shown.bs.offcanvas', function () {
+            if (cropper) { cropper.destroy(); }
+
+            cropper = new Cropper(imageToCrop, {
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 0.9,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+                responsive: true,
+                background: false
+            });
+        });
+
+        fileInput.addEventListener('change', function(e) {
+            const files = e.target.files;
+
+            if (files && files.length > 0) {
+                const file = files[0];
+                fileText.value = file.name;
+
+                // Если не картинка, выходим
+                if (!file.type.startsWith('image/')) {
+                    croppedPreviewContainer.style.display = 'none';
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imageToCrop.src = event.target.result;
+                    // Открываем меню
+                    cropOffcanvas.show();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        cropBtn.addEventListener('click', function() {
+            if (!cropper) return;
+
+            const canvas = cropper.getCroppedCanvas({
+                maxWidth: 1920,
+                maxHeight: 1080
+            });
+
+            canvas.toBlob(function(blob) {
+                const originalFileName = fileInput.files[0].name;
+                const newFile = new File([blob], originalFileName, { type: "image/png" });
+
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(newFile);
+                fileInput.files = dataTransfer.files;
+
+                croppedResult.src = canvas.toDataURL();
+                croppedPreviewContainer.style.display = 'block';
+
+                cropOffcanvas.hide();
+            }, 'image/png');
+        });
+
+        window.cancelCrop = function() {
+            fileInput.value = '';
+            fileText.value = "{{ gettext('admin.no_file_chosen') }}";
+            croppedPreviewContainer.style.display = 'none';
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        };
+    });
+</script>
+{% endblock %}

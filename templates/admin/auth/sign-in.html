@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ gettext('admin.sign_in') }} - {{ request.state.app_name }}</title>
+    <link href="{{ url_for('static', path='assets/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='assets/css/font-awesome.min.css') }}" rel="stylesheet"/>
+    <link href="{{ url_for('static', path='assets/css/style.css') }}" rel="stylesheet"/>
+    <style>
+        :root { --primary-brand: #4d008c; --primary-brand-hover: #3a006b; --body-bg-dark: #121212; --card-bg-dark: #1e1e1e; --text-color-dark: #e0e0e0; }
+        .btn-primary { background-color: var(--primary-brand); border-color: var(--primary-brand); }
+        .btn-primary:hover { background-color: var(--primary-brand-hover) !important; border-color: var(--primary-brand-hover) !important; }
+        a { color: var(--primary-brand); }
+        body.dark-mode { background-color: var(--body-bg-dark); color: var(--text-color-dark); }
+        body.dark-mode .card { background-color: var(--card-bg-dark); border-color: #333; color: var(--text-color-dark); }
+        body.dark-mode .form-control { background-color: #2c2c2c; border-color: #444; color: #fff; }
+        body.dark-mode .text-muted { color: #888 !important; }
+        body.dark-mode .footer { background-color: #1f1f1f !important; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="position-absolute top-0 end-0 p-3 d-flex gap-3 align-items-center">
+        <div class="btn-group btn-group-sm">
+            <a href="{{ url_for('admin.set_language', locale='en') }}" class="btn {% if request.session.get('locale') == 'en' or not request.session.get('locale') %}btn-primary{% else %}btn-outline-secondary{% endif %}">EN</a>
+            <a href="{{ url_for('admin.set_language', locale='ru') }}" class="btn {% if request.session.get('locale') == 'ru' %}btn-primary{% else %}btn-outline-secondary{% endif %}">RU</a>
+        </div>
+        <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="darkModeSwitch" style="cursor: pointer;">
+        </div>
+    </div>
+     <div class="row mt-4 justify-content-md-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card p-4 shadow-sm mt-5">
+                <div class="card-body">
+                    <h3 class="card-title text-center mb-4">{{ gettext('admin.sign_in') }}</h3>
+                     {% if success_msg %}
+                        <div class="alert alert-success text-center border-0 shadow-sm" role="alert"><i class="fa fa-check-circle me-2"></i> {{ success_msg }}</div>
+                     {% endif %}
+                     {% include 'partials/error_msg.html' %}
+                     <form role="form" action="{{ request.url_for('admin.auth.login') }}" method="post">
+                        <div class="mb-3">
+                                <label for="email" class="form-label">{{ gettext('admin.email') }}</label>
+                                <input type="email" name="email" class="form-control" id="email" required value="{{ form_data.email if form_data else '' }}">
+                        </div>
+                         <div class="mb-3">
+                                <label for="password" class="form-label">{{ gettext('admin.password') }}</label>
+                                <input type="password" name="password" class="form-control" id="password" required>
+                        </div>
+                         <div class="mb-3">
+                             <div class="row align-items-center">
+                                 <div class="col-6">
+                                     <a href="{{ url_for('admin.auth.forgot_password.form') }}" class="text-decoration-none text-muted small">{{ gettext('admin.forgot_password') }}</a>
+                                 </div>
+                                 <div class="col-6 d-flex justify-content-end">
+                                     <button type="submit" class="btn btn-primary rounded-3 px-4">{{ gettext('admin.sign_in') }}</button>
+                                 </div>
+                             </div>
+                         </div>
+                         <div class="mt-4 text-center border-top pt-3">
+                             <a href="{{ url_for('admin.auth.register.form') }}" class="fw-bold text-decoration-none" style="color: var(--primary-brand);">{{ gettext('admin.register_link') }}</a>
+                         </div>
+                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', path='assets/js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleSwitch = document.querySelector('#darkModeSwitch');
+            const body = document.body;
+            if (localStorage.getItem('theme') === 'dark') { body.classList.add('dark-mode'); toggleSwitch.checked = true; }
+            toggleSwitch.addEventListener('change', () => {
+                if (toggleSwitch.checked) { body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); }
+                else { body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); }
+            });
+        });
+    </script>
+</body>
+</html>

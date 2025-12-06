@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ gettext('admin.join_title') }} - {{ request.state.app_name }}</title>
+    <link href="{{ url_for('static', path='assets/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='assets/css/font-awesome.min.css') }}" rel="stylesheet"/>
+    <link href="{{ url_for('static', path='assets/css/style.css') }}" rel="stylesheet"/>
+    <style>
+        :root { --primary-brand: #4d008c; --primary-brand-hover: #3a006b; --body-bg-dark: #121212; --card-bg-dark: #1e1e1e; --text-color-dark: #e0e0e0; }
+        .btn-primary { background-color: var(--primary-brand); border-color: var(--primary-brand); }
+        .btn-primary:hover { background-color: var(--primary-brand-hover) !important; border-color: var(--primary-brand-hover) !important; }
+        a { color: var(--primary-brand); }
+        body.dark-mode { background-color: var(--body-bg-dark); color: var(--text-color-dark); }
+        body.dark-mode .card { background-color: var(--card-bg-dark); border-color: #333; color: var(--text-color-dark); }
+        body.dark-mode .form-control { background-color: #2c2c2c; border-color: #444; color: #fff; }
+        body.dark-mode .text-muted { color: #888 !important; }
+        .req-item { font-size: 0.85rem; color: #6c757d; transition: color 0.2s; }
+        .req-item.valid { color: #198754; }
+        .req-item.invalid { color: #6c757d; }
+        .req-item i { width: 15px; }
+    </style>
+</head>
+<body>
+     <div class="row mt-4 justify-content-md-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card p-4 shadow-sm mt-5">
+                <div class="card-body">
+                    <h3 class="card-title text-center mb-4">{{ gettext('admin.join_title') }} {{ request.state.app_name }}</h3>
+                     {% include 'partials/error_msg.html' %}
+                     <form role="form" action="{{ request.url_for('admin.auth.register.store') }}" method="post">
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label class="form-label">{{ gettext('admin.users.first_name') }}</label>
+                                <input type="text" name="first_name" class="form-control" required value="{{ form_data.first_name if form_data else '' }}">
+                            </div>
+                            <div class="col">
+                                <label class="form-label">{{ gettext('admin.users.last_name') }}</label>
+                                <input type="text" name="last_name" class="form-control" required value="{{ form_data.last_name if form_data else '' }}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                                <label class="form-label">{{ gettext('admin.email') }}</label>
+                                <input type="email" name="email" class="form-control" required value="{{ form_data.email if form_data else '' }}">
+                        </div>
+                         <div class="mb-3">
+                                <label class="form-label">{{ gettext('admin.password') }}</label>
+                                <input type="password" name="password" class="form-control" id="passwordInput" required>
+                                <div class="mt-2 border rounded p-2 bg-light small" id="passwordRequirements">
+                                    <p class="mb-1 fw-bold text-muted">{{ gettext('admin.pass_req.title') }}</p>
+                                    <ul class="list-unstyled mb-0 ps-1">
+                                        <li class="req-item" id="req-length"><i class="fa fa-circle-o"></i> {{ gettext('admin.pass_req.length') }}</li>
+                                        <li class="req-item" id="req-upper"><i class="fa fa-circle-o"></i> {{ gettext('admin.pass_req.upper') }}</li>
+                                        <li class="req-item" id="req-lower"><i class="fa fa-circle-o"></i> {{ gettext('admin.pass_req.lower') }}</li>
+                                        <li class="req-item" id="req-digit"><i class="fa fa-circle-o"></i> {{ gettext('admin.pass_req.digit') }}</li>
+                                        <li class="req-item" id="req-special"><i class="fa fa-circle-o"></i> {{ gettext('admin.pass_req.special') }}</li>
+                                    </ul>
+                                </div>
+                        </div>
+                        <div class="mb-3">
+                                <label class="form-label">{{ gettext('admin.confirm_password') }}</label>
+                                <input type="password" name="password_confirm" class="form-control" required>
+                        </div>
+                         <div class="d-grid gap-2">
+                             <button type="submit" class="btn btn-primary rounded-3">{{ gettext('admin.join_title') }}</button>
+                         </div>
+                         <div class="mt-4 text-center border-top pt-3">
+                             <a href="{{ url_for('admin.auth.login') }}" class="fw-bold text-decoration-none" style="color: var(--primary-brand);">{{ gettext('admin.login_link') }}</a>
+                         </div>
+                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', path='assets/js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleSwitch = document.querySelector('#darkModeSwitch');
+            const body = document.body;
+            if (localStorage.getItem('theme') === 'dark') { body.classList.add('dark-mode'); if(toggleSwitch) toggleSwitch.checked = true; const reqBox = document.getElementById('passwordRequirements'); if(reqBox) { reqBox.classList.remove('bg-light'); reqBox.style.borderColor = '#444'; }}
+            if(toggleSwitch) toggleSwitch.addEventListener('change', () => {
+                const reqBox = document.getElementById('passwordRequirements');
+                if (toggleSwitch.checked) { body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); if(reqBox) reqBox.classList.remove('bg-light'); }
+                else { body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); if(reqBox) reqBox.classList.add('bg-light'); }
+            });
+            const pwdInput = document.getElementById('passwordInput');
+            if(pwdInput) {
+                const reqs = { length: { el: document.getElementById('req-length'), regex: /.{8,}/ }, upper: { el: document.getElementById('req-upper'), regex: /[A-Z]/ }, lower: { el: document.getElementById('req-lower'), regex: /[a-z]/ }, digit: { el: document.getElementById('req-digit'), regex: /\d/ }, special: { el: document.getElementById('req-special'), regex: /[!@#$%^&*(),.?":{}|<>]/ } };
+                pwdInput.addEventListener('input', () => { const val = pwdInput.value; for (const key in reqs) { const item = reqs[key]; const icon = item.el.querySelector('i'); if (item.regex.test(val)) { item.el.classList.add('valid'); item.el.classList.remove('invalid'); icon.className = 'fa fa-check-circle'; } else { item.el.classList.remove('valid'); item.el.classList.add('invalid'); icon.className = 'fa fa-circle-o'; } } });
+            }
+        });
+    </script>
+</body>
+</html>
